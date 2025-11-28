@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OPEX UNIVERSE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --perspective-depth: 1000px;
+            --galaxy-rotation-duration: 120s; /* Чуть медленнее для величественности */
+            --star-twinkle-duration: 3s;
+            --text-fade-duration: 6s;
+            --star-fade-in-out-duration: 1s;
+            --main-text-color: #fff;
+            --shadow-color: rgba(255, 255, 255, 0.5);
+            --link-color: rgba(255, 255, 255, 0.6);
+            --link-hover-color: rgba(255, 255, 255, 1);
+            --link-shadow-hover: rgba(255, 255, 255, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--main-text-color);
+            touch-action: none;
+        }
+
+        .universe {
+            width: 100%;
+            height: 100%;
+            perspective: var(--perspective-depth);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .galaxy {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: rotate var(--galaxy-rotation-duration) infinite linear;
+        }
+
+        .star-container {
+            position: absolute;
+            transform-style: preserve-3d;
+            width: 0;
+            height: 0;
+        }
+
+        .star-plane {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            background: var(--main-text-color);
+            border-radius: 50%;
+            /* Уменьшил тень, чтобы звезды были четче */
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            transition: opacity var(--star-fade-in-out-duration) ease-in;
+            animation: twinkle var(--star-twinkle-duration) infinite alternate;
+        }
+
+        .star-container.visible .star-plane {
+            opacity: 1;
+        }
+
+        .text-container {
+            position: relative;
+            text-align: center;
+            z-index: 1000; /* Очень высокий z-index */
+            animation: fadeInOut var(--text-fade-duration) infinite ease-in-out;
+            padding: 0 20px;
+            pointer-events: none; /* Пропускаем клики сквозь контейнер */
+            
+            /* УБРАЛИ translateZ(200px), который увеличивал текст */
+            /* Текст теперь в плоскости экрана, масштаб 1:1 */
+            transform: translateZ(0); 
+        }
+        
+        .info-links {
+            pointer-events: auto; /* Возвращаем клики ссылкам */
+            margin-top: 15px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px var(--shadow-color);
+            margin-bottom: 10px;
+            white-space: nowrap; /* Запрет переноса заголовка, если возможно */
+        }
+
+        p {
+            font-size: 1em;
+            line-height: 1.4;
+            max-width: 300px;
+            margin: 0 auto 15px auto;
+        }
+
+        .info-links a {
+            display: inline-block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+            color: var(--link-color);
+            text-decoration: none;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            padding: 10px; /* Увеличил зону клика для пальца */
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        .info-links a:hover {
+            color: var(--link-hover-color);
+            text-shadow: 0 0 8px var(--link-shadow-hover);
+        }
+
+        @keyframes rotate {
+            /* Добавили небольшой сдвиг назад translateZ(-50px), чтобы звезды не лезли на текст */
+            0% { transform: translateZ(-50px) rotateY(0deg) rotateX(0deg); }
+            100% { transform: translateZ(-50px) rotateY(360deg) rotateX(360deg); }
+        }
+
+        @keyframes twinkle {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                /* Уменьшили шрифт для мобильных, чтобы точно влезал */
+                font-size: 1.8em; 
+                letter-spacing: 2px;
+                white-space: normal; /* Разрешаем перенос на очень узких экранах */
+            }
+            .text-container {
+                width: 100%;
+                padding: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="universe">
+        <div class="galaxy" id="galaxy"></div>
+        <div class="text-container">
+            <h1>OPEX UNIVERSE</h1>
+            <p>all in one</p>
+            <div class="info-links">
+                <a href="stihi" target="_blank" rel="noopener noreferrer">
+                    [ Координаты: StihiRus ]
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const galaxy = document.getElementById('galaxy');
+
+            const MIN_STARS = 100;
+            const MAX_STARS = 1100; // Оптимизировано для мобильных (400 * 3 = 1200 слоев)
+            const STAR_DENSITY_FACTOR = 6.0; 
+            const STAR_COUNT_EASING = 0.08;
+            const STAR_FADE_DURATION_MS = 1000;
+            const FPS_UPDATE_INTERVAL_MS = 1000;
+            
+            const SPREAD_FACTOR = 2.5; 
+
+            let stars = [];
+            let starCount = MIN_STARS;
+            let lastFPSTime = performance.now();
+            let frames = 0;
+            let currentFPS = 60;
+            
+            const rootStyles = getComputedStyle(document.documentElement);
+            const twinkleDurationBase = parseFloat(rootStyles.getPropertyValue('--star-twinkle-duration') || '3');
+
+            function createStar() {
+                const container = document.createElement('div');
+                container.className = 'star-container';
+
+                const p1 = document.createElement('div');
+                p1.className = 'star-plane';
+                p1.style.transform = 'translate(-50%, -50%)'; 
+
+                const p2 = document.createElement('div');
+                p2.className = 'star-plane';
+                p2.style.transform = 'translate(-50%, -50%) rotateX(90deg)';
+
+                const p3 = document.createElement('div');
+                p3.className = 'star-plane';
+                p3.style.transform = 'translate(-50%, -50%) rotateY(90deg)';
+
+                // ВЕРНУЛИ МАЛЕНЬКИЙ РАЗМЕР
+                // Раньше было Math.random() * 3 + 1.5 -> стало слишком крупно
+                // Теперь: от 0.5px до 2.0px. Это даст аккуратные, но объемные точки.
+                const size = Math.random() * 1.5 + 0.5; 
+                
+                [p1, p2, p3].forEach(p => {
+                    p.style.width = `${size}px`;
+                    p.style.height = `${size}px`;
+                    p.style.animationDelay = `${Math.random() * twinkleDurationBase}s`;
+                    container.appendChild(p);
+                });
+
+                const extendedWidth = window.innerWidth * SPREAD_FACTOR;
+                const extendedHeight = window.innerHeight * SPREAD_FACTOR;
+                
+                const x = (Math.random() * extendedWidth) - (extendedWidth / 2);
+                const y = (Math.random() * extendedHeight) - (extendedHeight / 2);
+                
+                // Глубина чуть больше, чтобы звезды были глубже
+                const depthRange = (window.innerWidth + window.innerHeight);
+                const z = (Math.random() * depthRange) - (depthRange / 2);
+
+                container.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
+
+                return container;
+            }
+
+            function updateStars() {
+                while (stars.length > Math.floor(starCount)) {
+                    const star = stars.pop();
+                    if (star) {
+                        star.classList.remove('visible');
+                        setTimeout(() => {
+                            if (star.parentNode) star.remove();
+                        }, STAR_FADE_DURATION_MS);
+                    }
+                }
+
+                while (stars.length < Math.floor(starCount)) {
+                    const star = createStar();
+                    galaxy.appendChild(star);
+                    stars.push(star);
+                    
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            star.classList.add('visible');
+                        });
+                    });
+                }
+            }
+
+            function runPerformanceMonitor() {
+                const now = performance.now();
+                frames++;
+
+                if (now >= lastFPSTime + FPS_UPDATE_INTERVAL_MS) {
+                    currentFPS = Math.round((frames * 1000) / (now - lastFPSTime));
+                    frames = 0;
+                    lastFPSTime = now;
+
+                    const targetCount = Math.floor(currentFPS * STAR_DENSITY_FACTOR);
+                    starCount += (targetCount - starCount) * STAR_COUNT_EASING;
+                    starCount = Math.max(MIN_STARS, Math.min(MAX_STARS, starCount));
+
+                    updateStars();
+                }
+                requestAnimationFrame(runPerformanceMonitor);
+            }
+
+            updateStars();
+            runPerformanceMonitor();
+        });
+    </script>
+</body>
+</html>
+
+
+
