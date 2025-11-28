@@ -1,0 +1,23 @@
+{
+  "name": "stihirus-api-server",
+  "version": "1.0.0",
+  "description": "Stihirus Reader API Server",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "stihirus-reader": "^1.2.0",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "OpexDevelop",
+  "license": "MIT"
+}
