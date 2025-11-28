@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Орех Орехов | Стихи</title> <!-- Title будет обновлен JS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=fallback" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #000000;
+            --secondary: #1a1a1a;
+            --text: #f0f0f0;
+            --highlight: #38bdf8;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --error-color: #f87171;
+            --loading-color: #60a5fa;
+            --header-height: 4rem; /* Примерная высота шапки для отступа */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Focus styles */
+        a:focus-visible, .modal-related-link:focus-visible, .modal-related-poem:focus-visible, .collection-link:focus-visible, #modalBackButton:focus-visible, .poem-card:focus-visible, button:focus-visible, .btn:focus-visible, .hamburger:focus-visible {
+            outline: 2px solid var(--highlight);
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+        /* Убираем стандартный outline для кнопок, так как есть focus-visible */
+        button {
+             outline: none;
+        }
+
+
+        html {
+            scroll-behavior: smooth;
+            /* --- IMPROVEMENT: CSS Scroll Padding --- */
+            scroll-padding-top: calc(var(--header-height) + 1rem); /* Отступ для плавной прокрутки к якорям */
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: var(--primary);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 25% 25%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(244, 114, 182, 0.15) 0%, transparent 50%);
+            overflow-x: hidden;
+        }
+
+        .frosted-glass {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            height: var(--header-height);
+        }
+
+        .logo {
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: -0.5px;
+            /* --- IMPROVEMENT: Logo Link Style --- */
+            text-decoration: none;
+            color: inherit;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1rem;
+        }
+
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 0.9rem;
+            position: relative;
+            opacity: 0.9;
+            transition: all 0.2s ease;
+        }
+
+        nav a:hover {
+            opacity: 1;
+            color: var(--highlight);
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background-color: var(--highlight);
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+         .hamburger {
+            display: none;
+            cursor: pointer;
+            width: 24px;
+            height: 16px;
+            position: relative;
+            z-index: 101;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .hamburger span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background-color: var(--text);
+            transition: all 0.3s ease;
+            position: absolute;
+            left: 0;
+        }
+
+        .hamburger span:nth-child(1) { top: 0; }
+        .hamburger span:nth-child(2) { top: 7px; }
+        .hamburger span:nth-child(3) { top: 14px; }
+
+        .hamburger.active span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger.active span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
+
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 70%;
+            max-width: 300px;
+            height: 100vh;
+            z-index: 100;
+            transition: right 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            display: block;
+        }
+
+        .mobile-menu.active {
+            right: 0;
+        }
+
+        .mobile-nav {
+            list-style: none;
+            padding: 6rem 2rem;
+        }
+
+        .mobile-nav li {
+            margin-bottom: 1.5rem;
+        }
+
+        .mobile-nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-size: 1.1rem;
+            display: block;
+            padding: 0.5rem 0;
+            transition: color 0.2s ease;
+        }
+         .mobile-nav a:hover {
+            color: var(--highlight);
+        }
+
+         main {
+            padding: calc(var(--header-height) + 2rem) 1rem 4rem; /* Учитываем высоту шапки */
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #about {
+             padding: 2rem;
+             margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            #about {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.8rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-top: 1.5rem;
+        }
+
+        .btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--highlight);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+        }
+        @media (max-width: 768px) {
+            #about .btn {
+                display: flex;
+                margin-left: auto;
+                margin-right: auto;
+                max-width: fit-content;
+            }
+        }
+        /* --- IMPROVEMENT: Try Again Button Style --- */
+        .try-again-btn {
+            margin-top: 1rem;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+        #poems h2 {
+            font-weight: 500;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.5px;
+            text-align: center;
+        }
+
+        .collections-list-container {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding: 0 1rem;
+        }
+
+        .collections-list-container h3 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+            color: var(--highlight);
+        }
+
+        .collections-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem 1.5rem;
+        }
+
+        .collection-link {
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            background: var(--glass);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            opacity: 0.85;
+            display: inline-block;
+            cursor: pointer;
+            /* Button reset */
+            font-family: inherit;
+        }
+
+        .collection-link:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--highlight);
+            color: var(--highlight);
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+
+        .collections-list-container .status-message {
+            font-size: 0.95rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+
+        .poems-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .poems-container .status-message {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        .poems-container .loading { color: var(--loading-color); }
+        .poems-container .error { color: var(--error-color); }
+
+        /* --- IMPROVEMENT: Poem Card as Button --- */
+        .poem-card {
+            /* Inherit from .frosted-glass */
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            /* Card specific */
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            min-height: 240px;
+            justify-content: space-between;
+            position: relative;
+            opacity: 0;
+            transform: translateY(30px);
+            will-change: opacity, transform;
+            transition: opacity 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        border-color 0.3s ease,
+                        box-shadow 0.3s ease;
+            /* Button Resets */
+            text-align: left;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            width: 100%; /* Ensure button takes full grid width */
+        }
+
+        .poem-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .poem-card.visible:hover,
+        .poem-card:focus-visible { /* Combine hover and focus-visible for visual consistency */
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: var(--highlight);
+        }
+        /* Specific focus style from global rules still applies */
+
+
+        .poem-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .poem-excerpt {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            opacity: 0.8;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+            white-space: pre-line;
+        }
+
+        .poem-meta {
+            font-size: 0.85rem;
+            opacity: 0.6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+        .poem-meta span {
+             display: inline-flex;
+             align-items: center;
+             gap: 0.3rem;
+        }
+        .poem-meta .likes {
+            color: var(--highlight);
+        }
+
+        section h2 {
+            font-weight: 500;
+            font-size: 1.5rem;
+            margin-bottom: 1.2rem;
+            letter-spacing: -0.5px;
+        }
+        #poems h2 {
+             font-size: 1.8rem;
+             margin-bottom: 1.5rem;
+             text-align: center;
+        }
+        #contact h2 {
+             font-size: 1.5rem;
+             margin-bottom: 1.5rem;
+        }
+
+        main > section.frosted-glass {
+             padding: 2rem;
+             margin-top: 3rem;
+        }
+        main > section:first-child {
+             margin-top: 0;
+        }
+
+        @media (max-width: 768px) {
+            main > section.frosted-glass {
+                padding: 1.5rem;
+                margin-top: 2rem;
+            }
+             main > section:first-child {
+                 margin-top: 0;
+             }
+        }
+
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            padding: 1rem;
+            overflow-y: hidden; /* Prevent body scroll when modal is open */
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content-wrapper {
+            max-width: 650px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+            transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+            position: relative;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .modal-content-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .modal.active .modal-content-wrapper {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-content {
+            padding: 2rem;
+            position: relative;
+        }
+
+        .modal-content.related-view-active .modal-title,
+        .modal-content.related-view-active .modal-poem,
+        .modal-content.related-view-active .modal-meta {
+            display: none;
+        }
+        #modalRelatedContent {
+            display: none;
+            margin-top: 1rem;
+        }
+        .modal-content.related-view-active #modalRelatedContent {
+            display: block;
+        }
+
+
+        .modal-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .modal-poem {
+            line-height: 1.3;
+            white-space: pre-line;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .modal-meta {
+             font-size: 0.9rem;
+             opacity: 0.7;
+             display: flex;
+             justify-content: space-between;
+             flex-wrap: wrap;
+             gap: 0.8rem;
+             margin-top: 1.5rem;
+             padding-top: 1rem;
+             border-top: 1px solid var(--glass-border);
+        }
+         .modal-meta span, .modal-meta a {
+             display: inline-flex;
+             align-items: center;
+             gap: 0.4rem;
+             color: inherit;
+             text-decoration: none;
+             cursor: default;
+             opacity: 0.7;
+         }
+         .modal-meta a {
+             cursor: pointer;
+             transition: color 0.2s ease, opacity 0.2s ease;
+             opacity: 0.8;
+         }
+         .modal-meta a:hover {
+             color: var(--highlight);
+             opacity: 1;
+         }
+         .modal-meta .likes {
+             color: var(--highlight);
+             opacity: 1;
+             cursor: default;
+         }
+
+        .modal-close {
+            position: absolute;
+            top: 0.8rem;
+            right: 0.8rem;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.6rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1001;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .modal-back-button {
+            background: none;
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+            padding: 0.4rem 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .modal-back-button:hover {
+            background-color: var(--glass);
+            border-color: var(--highlight);
+        }
+        #modalRelatedContent h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: var(--highlight);
+        }
+        #modalRelatedContent h4 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 1rem;
+            opacity: 0.9;
+        }
+        #modalRelatedContent ul {
+            list-style: none;
+            padding-left: 0.5rem;
+        }
+        #modalRelatedContent li {
+            margin-bottom: 0.6rem;
+        }
+        .modal-related-poem, .modal-related-link {
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: block;
+            padding: 0.2rem 0;
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+        .modal-related-poem:hover, .modal-related-link:hover {
+            color: var(--highlight);
+            opacity: 1;
+        }
+        .modal-related-poem i {
+            margin-right: 0.5rem;
+            opacity: 0.6;
+        }
+
+        .about-container {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .about-text {
+            flex: 1;
+            min-width: 250px;
+        }
+        .about-text p {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+            opacity: 0.9;
+            font-size: clamp(0.9rem, 1.5vw, 1rem);
+        }
+        .about-text #authorDescriptionPlaceholder {
+            min-height: 5em;
+        }
+        .about-text #authorDescriptionPlaceholder p:last-child {
+             margin-bottom: 0;
+        }
+
+
+        .about-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--secondary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            border: 2px solid var(--glass-border);
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+         @media (min-width: 769px) {
+             .about-container:not([style*="flex-wrap: wrap"]) .about-avatar {
+                margin-bottom: 0;
+             }
+         }
+
+        .about-avatar i {
+            font-size: 3rem;
+            opacity: 0.4;
+        }
+        .about-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #contact h2 { margin-bottom: 1.5rem; }
+        #contact p {
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        .contact-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .contact-links a {
+            color: var(--highlight);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s ease;
+        }
+        .contact-links a:hover {
+            opacity: 0.8;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem 1rem 2rem;
+            opacity: 0.6;
+            font-size: 0.9rem;
+            margin-top: 3rem;
+            border-top: 1px solid var(--glass-border);
+        }
+        footer a {
+            color: var(--text);
+            text-decoration: underline;
+            text-decoration-color: var(--glass-border);
+            transition: color 0.2s ease, text-decoration-color 0.2s ease;
+        }
+        footer a:hover {
+            color: var(--highlight);
+            text-decoration-color: var(--highlight);
+        }
+        footer .footer-links {
+            margin-top: 0.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --header-height: 3.5rem; /* Adjust header height for mobile */
+            }
+            html {
+                 scroll-padding-top: calc(var(--header-height) + 1rem);
+            }
+            header {
+                padding: 0.8rem 1rem; /* Adjust padding */
+            }
+
+            nav ul.desktop-nav {
+                display: none;
+            }
+
+            .hamburger {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            main {
+                padding: calc(var(--header-height) + 1.5rem) 1rem 3rem; /* Adjust main padding */
+            }
+
+            #poems h2 { font-size: 1.5rem; }
+            .collections-list-container { margin-bottom: 2rem; }
+            .collections-list { gap: 0.6rem 1rem; }
+            .collection-link { font-size: 0.85rem; padding: 0.3rem 0.6rem; }
+
+            .poems-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .poem-card { min-height: 200px; }
+
+            .modal-content-wrapper {
+                 max-height: 85vh;
+            }
+            .modal-content { padding: 1.5rem; }
+            .modal-title { font-size: 1.4rem; }
+            .modal-poem { font-size: 0.95rem; line-height: 1.35; }
+            .modal-close {
+                top: 0.5rem;
+                right: 0.5rem;
+                font-size: 1.5rem;
+            }
+            #modalRelatedContent h3 { font-size: 1.2rem; }
+            #modalRelatedContent h4 { font-size: 1rem; }
+            .modal-related-poem, .modal-related-link { font-size: 0.9rem; }
+
+
+            .about-container {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+             .about-avatar {
+                 margin-bottom: 1.5rem;
+                 margin-right: 0;
+             }
+             .about-text {
+                 min-width: auto;
+             }
+             .about-text p {
+                  font-size: 0.95rem;
+             }
+
+            .contact-links { justify-content: center; }
+
+            footer { padding: 2rem 1rem; }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            main { padding: calc(var(--header-height) + 2rem) 2rem 4rem; }
+            .poems-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+             .poem-card { min-height: 220px; }
+
+            .about-text p {
+                font-size: clamp(0.95rem, 1.8vw, 1rem);
+            }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        body.no-scroll {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <header class="frosted-glass">
+        <!-- --- IMPROVEMENT: Logo as Link --- -->
+        <a href="#" class="logo" id="authorLogoLink">
+            <span id="authorLogo">Загрузка...</span>
+        </a>
+        <nav>
+            <ul class="desktop-nav">
+                <li><a href="#poems">Стихи</a></li>
+                <li><a href="#contact">Контакты</a></li>
+            </ul>
+        </nav>
+        <button class="hamburger" id="hamburger" aria-label="Меню" aria-expanded="false" aria-controls="mobileMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="mobile-menu frosted-glass" id="mobileMenu">
+        <ul class="mobile-nav">
+            <li><a href="#poems" onclick="closeMenu()">Стихи</a></li>
+            <li><a href="#contact" onclick="closeMenu()">Контакты</a></li>
+        </ul>
+    </div>
+
+    <main>
+        <section id="about" class="frosted-glass">
+            <div class="about-container">
+                 <div class="about-avatar" id="authorAvatarContainer">
+                    <i class="fas fa-feather-alt"></i>
+                 </div>
+                <div class="about-text">
+                    <!-- --- IMPROVEMENT: ARIA Live Region --- -->
+                    <div id="authorDescriptionPlaceholder" aria-live="polite">Загрузка описания автора...</div>
+                </div>
+            </div>
+            <a href="#poems" class="btn">Читать стихи <i class="fas fa-arrow-down"></i></a>
+        </section>
+
+        <section id="poems">
+            <h2>Стихотворения</h2>
+            <div id="collectionsListContainer" class="collections-list-container">
+                <!-- Сборники будут загружены сюда -->
+            </div>
+            <!-- --- IMPROVEMENT: ARIA Live Region --- -->
+            <div class="poems-container" id="poemsContainer" aria-live="polite">
+                 <p class="status-message loading">Загрузка данных автора...</p>
+            </div>
+        </section>
+
+        <section id="contact" class="frosted-glass">
+            <h2>Контакты</h2>
+            <p>Связаться с автором или следить за обновлениями:</p>
+            <div class="contact-links">
+                <a href="https://t.me/opex_it" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-telegram"></i> @opex_it
+                </a>
+                <a href="#" target="_blank" rel="noopener noreferrer" id="stihirusProfileLink">
+                    <i class="fas fa-link"></i> Stihirus.ru
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal" id="poemModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display: flex;">
+         <button class="modal-close" onclick="closeModal()" aria-label="Закрыть окно"><i class="fas fa-times"></i></button>
+         <div class="modal-content-wrapper frosted-glass">
+            <div class="modal-content" id="modalContent">
+                <h3 class="modal-title" id="modalTitle"></h3>
+                <p class="modal-poem" id="modalPoem"></p>
+                <div class="modal-meta" id="modalMeta"></div>
+                <div id="modalRelatedContent">
+                    <!-- Связанный контент будет загружен сюда -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; <span id="footerAuthorName">Автор</span>, <span id="currentYear"></span>.
+        <div class="footer-links">
+             <span>Сайт создан на основе публикаций на <a href="#" target="_blank" rel="noopener noreferrer" id="footerStihirusLink">Stihirus.ru</a></span>
+        </div>
+    </footer>
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://stihirus-reader-api-vercel.vercel.app';
+        //'http://opexxd.serv00.net:30010'; 
+        const DEFAULT_AUTHOR = 'oreh-orehov'; // Default author if none in URL
+        // --- END CONFIGURATION ---
+
+        let allAuthorData = null; // Store full author data
+        let poemsToDisplay = []; // Store poems currently displayed
+
+        // --- DOM Elements ---
+        const poemsContainer = document.getElementById('poemsContainer');
+        const collectionsListContainer = document.getElementById('collectionsListContainer');
+        const authorLogo = document.getElementById('authorLogo'); // Теперь это span внутри ссылки
+        const authorAvatarContainer = document.getElementById('authorAvatarContainer');
+        const authorDescriptionPlaceholder = document.getElementById('authorDescriptionPlaceholder');
+        const stihirusProfileLink = document.getElementById('stihirusProfileLink');
+        const footerAuthorName = document.getElementById('footerAuthorName');
+        const footerStihirusLink = document.getElementById('footerStihirusLink');
+        const modal = document.getElementById('poemModal');
+        const modalContent = document.getElementById('modalContent');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalPoem = document.getElementById('modalPoem');
+        const modalMeta = document.getElementById('modalMeta');
+        const modalRelatedContent = document.getElementById('modalRelatedContent');
+        const modalContentWrapper = modal.querySelector('.modal-content-wrapper');
+        const modalCloseButton = modal.querySelector('.modal-close');
+        const hamburger = document.getElementById('hamburger');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('overlay');
+
+        let previouslyFocusedElement = null;
+        let currentPoemIdInModal = null;
+
+        // --- Helper: Get Author Identifier from URL or Default ---
+        function getAuthorIdentifier() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('author') || DEFAULT_AUTHOR;
+        }
+
+        // --- Data Fetching ---
+        async function fetchData(identifier) { // Убрали page, так как всегда грузим всё
+            if (!poemsContainer) {
+                console.error("Элемент #poemsContainer не найден!");
+                return;
+            }
+            poemsContainer.innerHTML = '<p class="status-message loading">Загрузка данных автора...</p>';
+            if (collectionsListContainer) collectionsListContainer.innerHTML = '';
+            if (authorDescriptionPlaceholder) authorDescriptionPlaceholder.innerHTML = '<p class="status-message loading">Загрузка описания...</p>'; // Обновляем и описание
+
+            // Всегда запрашиваем все стихи
+            let apiUrl = `${API_BASE_URL}/author/${encodeURIComponent(identifier)}?page=null`;
+
+            console.log(`Requesting Author Data: ${apiUrl}`);
+
+            try {
+                const response = await fetch(apiUrl);
+                const result = await response.json();
+
+                if (!response.ok || result.status !== 'success') {
+                    const errorMsg = result?.error?.message || `HTTP ошибка! Статус: ${response.status}`;
+                    const errorCode = result?.error?.code || response.status;
+                    console.error('API Error Response:', result);
+                    throw new Error(errorMsg, { cause: { code: errorCode } });
+                }
+
+                if (result.data) {
+                    allAuthorData = result.data;
+                    poemsToDisplay = allAuthorData.poems || []; // Изначально показываем все
+                    updateAuthorInfoOnPage(allAuthorData);
+                    displayCollections(allAuthorData.collections, allAuthorData.poems);
+                    displayPoems(poemsToDisplay); // Показываем все стихи
+                } else {
+                    throw new Error("Получены некорректные данные от API (нет поля data).");
+                }
+            } catch (error) {
+                 console.error('Ошибка при загрузке данных автора:', error);
+                 let displayError = error.message || 'Неизвестная ошибка.';
+                 if (error.cause?.code === 404) displayError = `Автор '${identifier}' не найден.`;
+                 else if (error instanceof SyntaxError) displayError = `Ошибка ответа сервера (не JSON).`;
+
+                 // --- IMPROVEMENT: Try Again Button ---
+                 poemsContainer.innerHTML = `
+                    <p class="status-message error">Не удалось загрузить данные: ${displayError}</p>
+                    <button class="btn try-again-btn" onclick="fetchData(getAuthorIdentifier())">
+                        <i class="fas fa-redo"></i> Попробовать снова
+                    </button>`;
+                 if (authorDescriptionPlaceholder) authorDescriptionPlaceholder.textContent = 'Не удалось загрузить описание автора.';
+                 if (collectionsListContainer) collectionsListContainer.innerHTML = '';
+                 if (authorLogo) authorLogo.textContent = 'Ошибка';
+                 if (footerAuthorName) footerAuthorName.textContent = 'Ошибка';
+            }
+        }
+
+        // --- Update Author Info in DOM ---
+        function updateAuthorInfoOnPage(authorData) {
+            if (!authorData) return;
+            const authorName = authorData.username || 'Автор';
+            const profileUrl = authorData.profileUrl || '#';
+            const description = authorData.description || '';
+            const avatarUrl = authorData.avatarUrl;
+
+            document.title = `${authorName} | Стихи`;
+            if (authorLogo) authorLogo.textContent = authorName; // Обновляем текст в span
+            if (footerAuthorName) footerAuthorName.textContent = authorName;
+            if (stihirusProfileLink) stihirusProfileLink.href = profileUrl;
+            if (footerStihirusLink) footerStihirusLink.href = profileUrl;
+
+            if (authorDescriptionPlaceholder) {
+                 if (description) {
+                    authorDescriptionPlaceholder.innerHTML = description.split('\n').map(p => p.trim()).filter(p => p).map(p => `<p>${p}</p>`).join('');
+                 } else {
+                     authorDescriptionPlaceholder.innerHTML = '<p><i>Описание автора отсутствует.</i></p>';
+                 }
+            }
+            if (authorAvatarContainer) {
+                authorAvatarContainer.innerHTML = avatarUrl ? `<img src="${avatarUrl}" alt="Аватар ${authorName}">` : '<i class="fas fa-feather-alt"></i>';
+            }
+        }
+
+        // --- Display Collections ---
+        function displayCollections(collections, allPoems) {
+            if (!collectionsListContainer) return;
+            collectionsListContainer.innerHTML = '';
+            if (!allPoems || allPoems.length === 0) return;
+
+            const relevantCollections = new Set();
+            allPoems.forEach(poem => {
+                relevantCollections.add(poem.collection || 'Без сборника');
+            });
+
+            const displayableCollections = (collections || [])
+                .filter(col => relevantCollections.has(col.name))
+                .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+            if (relevantCollections.has('Без сборника') && !displayableCollections.some(c => c.name === 'Без сборника')) {
+                 displayableCollections.unshift({ name: 'Без сборника', url: '#' });
+            }
+            displayableCollections.unshift({ name: 'Все стихи', url: '#' }); // Добавляем "Все стихи"
+
+            if (displayableCollections.length > 1) {
+                const heading = document.createElement('h3');
+                heading.textContent = 'Сборники:';
+                collectionsListContainer.appendChild(heading);
+
+                const list = document.createElement('ul');
+                list.className = 'collections-list';
+
+                displayableCollections.forEach(collection => {
+                    const listItem = document.createElement('li');
+                    const link = document.createElement('button'); // Используем button
+                    link.textContent = collection.name || 'Без названия';
+                    link.className = 'collection-link';
+                    link.setAttribute('data-collection-name', collection.name);
+                    link.title = `Показать стихи из сборника "${collection.name}"`;
+                    link.onclick = (event) => {
+                        event.preventDefault();
+                        filterPoemsByCollection(collection.name);
+                        document.querySelectorAll('.collection-link.active').forEach(el => el.classList.remove('active'));
+                        link.classList.add('active');
+                    };
+                    if (collection.name === 'Все стихи') {
+                        link.classList.add('active'); // "Все стихи" активны по умолчанию
+                    }
+                    listItem.appendChild(link);
+                    list.appendChild(listItem);
+                });
+                collectionsListContainer.appendChild(list);
+            }
+        }
+
+        // --- Filter Poems by Collection ---
+        function filterPoemsByCollection(collectionName) {
+             if (!allAuthorData || !allAuthorData.poems) return;
+
+             if (collectionName === 'Все стихи') {
+                 poemsToDisplay = allAuthorData.poems;
+             } else if (collectionName === 'Без сборника') {
+                 poemsToDisplay = allAuthorData.poems.filter(poem => !poem.collection);
+             } else {
+                 poemsToDisplay = allAuthorData.poems.filter(poem => poem.collection === collectionName);
+             }
+             displayPoems(poemsToDisplay);
+        }
+
+
+        // --- Display Poems on Page ---
+        function displayPoems(poems) {
+            if (!poemsContainer) return;
+            poemsContainer.innerHTML = ''; // Clear previous poems
+
+            if (!poems || poems.length === 0) {
+                 poemsContainer.innerHTML = '<p class="status-message">Стихи в этом сборнике не найдены.</p>';
+                 return;
+            }
+
+            // --- IMPROVEMENT: Use DocumentFragment ---
+            const fragment = document.createDocumentFragment();
+
+            poems.forEach((poem, index) => {
+                // --- IMPROVEMENT: Use <button> for poem card ---
+                const card = document.createElement('button');
+                card.className = 'poem-card frosted-glass'; // Классы стилизации
+                card.onclick = () => openModal(poem.id);
+                // role="button" и tabindex="0" не нужны для <button>
+                card.setAttribute('data-poem-id', poem.id);
+                // keydown для Enter/Space на button не обязателен, но оставим для единообразия
+                card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(poem.id); } });
+                card.style.transitionDelay = `${index * 0.08}s`;
+
+                // Логика отрывка остается прежней
+                const excerptText = poem.text || '';
+                const excerptLines = excerptText.split('\n').filter(line => line.trim() !== '');
+                const maxLines = 6, maxLength = 150;
+                let excerpt = excerptLines.slice(0, maxLines).join('\n');
+                let needsEllipsis = excerptLines.length > maxLines;
+                if (excerpt.length > maxLength) {
+                    excerpt = excerpt.substring(0, maxLength).trim();
+                    const lastSpaceIndex = excerpt.lastIndexOf(" ");
+                    if (lastSpaceIndex > 0) excerpt = excerpt.substring(0, lastSpaceIndex);
+                    needsEllipsis = true;
+                }
+                if (needsEllipsis && excerpt.length > 0) excerpt += '...';
+                else if (excerptText.length > maxLength && excerpt.length === 0) {
+                    excerpt = excerptText.substring(0, maxLength).trim();
+                    const lastSpaceIndex = excerpt.lastIndexOf(" ");
+                    if (lastSpaceIndex > 0) excerpt = excerpt.substring(0, lastSpaceIndex);
+                    excerpt += '...';
+                }
+
+                const datePart = poem.created ? poem.created.split(' ')[0] : 'Неизвестно';
+                const likesHtml = typeof poem.rating === 'number' ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : '';
+
+                // Внутреннее содержимое кнопки
+                card.innerHTML = `
+                    <div><h3 class="poem-title">${poem.title || '***'}</h3><p class="poem-excerpt">${excerpt || '(Нет текста)'}</p></div>
+                    <div class="poem-meta"><span><i class="far fa-calendar-alt"></i> ${datePart}</span>${likesHtml}</div>`;
+
+                fragment.appendChild(card); // Добавляем во фрагмент
+
+                // Trigger animation
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => card.classList.add('visible'));
+                });
+            });
+
+            poemsContainer.appendChild(fragment); // Добавляем все карточки разом
+        }
+
+        // --- Mobile Menu Logic ---
+        function toggleMenu() {
+            const isActive = hamburger.classList.contains('active');
+            hamburger.setAttribute('aria-expanded', String(!isActive));
+            hamburger.classList.toggle('active', !isActive);
+            mobileMenu.classList.toggle('active', !isActive);
+            overlay.classList.toggle('active', !isActive);
+            document.body.classList.toggle('no-scroll', !isActive || modal.classList.contains('active')); // Учитываем и модалку
+        }
+        function closeMenu() {
+            if (hamburger.classList.contains('active')) {
+                hamburger.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
+                mobileMenu.classList.remove('active');
+                overlay.classList.remove('active');
+                if (!modal.classList.contains('active')) { // Не разблокируем скролл, если модалка открыта
+                    document.body.classList.remove('no-scroll');
+                }
+            }
+        }
+        hamburger.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', closeMenu);
+
+        // --- Modal Logic ---
+        function findPoemById(id) {
+            return poemsToDisplay.find(p => p.id === id) || allAuthorData?.poems?.find(p => p.id === id);
+        }
+
+        function openModal(poemId) {
+            const poem = findPoemById(poemId);
+            if (!poem) { console.error(`Poem with ID ${poemId} not found.`); return; }
+            currentPoemIdInModal = poemId;
+            if (!modal.classList.contains('active')) { previouslyFocusedElement = document.activeElement; }
+
+            hideRelatedContent(false); // Сбрасываем вид связанных стихов
+
+            modalTitle.textContent = poem.title || '***';
+            modalPoem.textContent = poem.text || 'Нет текста.';
+
+            const datePart = poem.created ? poem.created.split(' ')[0] : '';
+            const timePart = poem.created ? poem.created.split(' ')[1] || '' : '';
+            const rubricName = poem.rubric?.name || 'Без рубрики';
+            const collectionName = poem.collection || 'Без сборника';
+            const rubricHtml = `<a href="#" class="modal-meta-link" data-type="rubric" data-value="${rubricName}" title="Показать стихи из рубрики '${rubricName}'"><i class="fas fa-folder-open"></i> ${rubricName}</a>`;
+            const collectionHtml = `<a href="#" class="modal-meta-link" data-type="collection" data-value="${collectionName}" title="Показать стихи из сборника '${collectionName}'"><i class="fas fa-book"></i> ${collectionName}</a>`;
+            const likesHtml = typeof poem.rating === 'number' ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : '';
+            const authorName = allAuthorData?.username || 'Автор';
+            const authorHtml = `<span><i class="fas fa-user-edit"></i> ${authorName}</span>`;
+            const wordCount = poem.text ? poem.text.split(/\s+/).filter(Boolean).length : 0;
+            const readTime = Math.max(1, Math.ceil(wordCount / 200));
+            const readTimeHtml = `<span><i class="far fa-clock"></i> ~${readTime} мин</span>`;
+
+            modalMeta.innerHTML = `${authorHtml}<span><i class="far fa-calendar-alt"></i> ${datePart} ${timePart}</span>${readTimeHtml}${rubricHtml}${collectionHtml}${likesHtml}`;
+
+            modalContentWrapper.scrollTop = 0;
+            modal.classList.add('active');
+            document.body.classList.add('no-scroll'); // Блокируем скролл body
+            setTimeout(() => modalCloseButton.focus(), 400); // Фокус на кнопку закрытия
+        }
+
+        // Функция для открытия модалки сразу в режиме просмотра сборника/рубрики (если понадобится)
+        /*
+        function openModalForCollection(collectionName) {
+            if (!modal.classList.contains('active')) { previouslyFocusedElement = document.activeElement; }
+            currentPoemIdInModal = null;
+            modal.classList.add('active');
+            document.body.classList.add('no-scroll');
+            modalContentWrapper.scrollTop = 0;
+            showRelatedContent('collection', collectionName, 'mainList');
+            const backButton = modalRelatedContent.querySelector('.modal-back-button');
+            if (backButton) { setTimeout(() => backButton.focus(), 400); }
+        }
+        */
+
+        function closeModal() {
+            modal.classList.remove('active');
+            // Разблокируем скролл body только если и меню закрыто
+            if (!mobileMenu.classList.contains('active')) {
+                document.body.classList.remove('no-scroll');
+            }
+            if (previouslyFocusedElement) {
+                previouslyFocusedElement.focus();
+                previouslyFocusedElement = null;
+            }
+            currentPoemIdInModal = null;
+            hideRelatedContent(false); // Сбрасываем вид связанных стихов при закрытии
+        }
+
+        function getUniqueValues(type) {
+            if (!allAuthorData || !allAuthorData.poems) return [];
+            const values = new Set();
+            const defaultValue = type === 'collection' ? 'Без сборника' : 'Без рубрики';
+            allAuthorData.poems.forEach(poem => {
+                let value = (type === 'rubric' ? poem.rubric?.name : poem.collection) || defaultValue;
+                values.add(value);
+            });
+            return Array.from(values).sort((a, b) => a.localeCompare(b, 'ru'));
+        }
+
+        function showRelatedContent(type, value, origin = 'poemMeta') {
+            if (!allAuthorData || !allAuthorData.poems) return;
+            const defaultValue = type === 'collection' ? 'Без сборника' : 'Без рубрики';
+            const relatedPoems = allAuthorData.poems.filter(poem => {
+                let poemValue = (type === 'rubric' ? poem.rubric?.name : poem.collection) || defaultValue;
+                return poemValue === value;
+            });
+            const otherValues = getUniqueValues(type).filter(v => v !== value);
+
+            const typeText = type === 'rubric' ? 'рубрики' : 'сборника';
+            const otherTypeTextPlural = type === 'rubric' ? 'рубрики' : 'сборники';
+            const otherTypeTextSingular = type === 'rubric' ? 'рубрику' : 'сборник';
+            const backButtonText = origin === 'mainList' ? 'Закрыть' : 'Назад к стихотворению'; // Упростим текст кнопки
+            const backButtonAction = origin === 'mainList' ? closeModal : () => hideRelatedContent(true);
+
+            let relatedHtml = `
+                <button class="modal-back-button" id="modalBackButton" aria-label="${backButtonText}">
+                    <i class="fas fa-arrow-left"></i> ${backButtonText}
+                </button>
+                <h3>Стихи из ${typeText}: ${value}</h3>
+            `;
+            if (relatedPoems.length > 0) {
+                relatedHtml += '<ul>';
+                relatedPoems.forEach(poem => {
+                    // Используем data-poem-id для идентификации
+                    relatedHtml += `<li><a href="#" class="modal-related-poem" data-poem-id="${poem.id}" title="Открыть '${poem.title || '***'}'"><i class="far fa-file-alt"></i> ${poem.title || '***'}</a></li>`;
+                });
+                relatedHtml += '</ul>';
+            } else { relatedHtml += `<p>Стихов в этой ${typeText} не найдено.</p>`; }
+            if (otherValues.length > 0) {
+                relatedHtml += `<h4>Другие ${otherTypeTextPlural}</h4><ul>`;
+                otherValues.forEach(otherVal => {
+                    relatedHtml += `<li><a href="#" class="modal-related-link" data-type="${type}" data-value="${otherVal}" title="Показать ${otherTypeTextSingular} '${otherVal}'">${otherVal}</a></li>`;
+                });
+                relatedHtml += '</ul>';
+            }
+
+            modalRelatedContent.innerHTML = relatedHtml;
+            modalContent.classList.add('related-view-active');
+            modalContentWrapper.scrollTop = 0;
+            const backButton = document.getElementById('modalBackButton');
+            if (backButton) {
+                // Удаляем старый обработчик, если он был
+                backButton.removeEventListener('click', closeModal);
+                backButton.removeEventListener('click', hideRelatedContent);
+                // Добавляем новый
+                backButton.addEventListener('click', backButtonAction);
+                setTimeout(() => backButton.focus(), 100); // Фокус на кнопку "Назад"
+            }
+        }
+
+        function hideRelatedContent(restoreFocusToClose = true) {
+            modalContent.classList.remove('related-view-active');
+            // Возвращаем фокус на кнопку закрытия модалки, если мы вернулись к стиху
+            if (restoreFocusToClose && currentPoemIdInModal !== null) {
+                 setTimeout(() => modalCloseButton.focus(), 100);
+            }
+        }
+
+        // --- Event Listeners ---
+        modalContent.addEventListener('click', function(e) {
+            const target = e.target.closest('a'); // Ищем ближайшую ссылку
+            if (!target) return;
+
+            if (target.classList.contains('modal-meta-link')) {
+                e.preventDefault();
+                const type = target.dataset.type;
+                const value = target.dataset.value;
+                if (type && value) showRelatedContent(type, value, 'poemMeta');
+            }
+            else if (target.classList.contains('modal-related-poem')) {
+                e.preventDefault();
+                const poemId = parseInt(target.dataset.poemId, 10);
+                if (!isNaN(poemId)) openModal(poemId); // Открываем стих по ID
+            }
+            else if (target.classList.contains('modal-related-link')) {
+                e.preventDefault();
+                const type = target.dataset.type;
+                const value = target.dataset.value;
+                // Определяем, откуда пришли в этот режим (из стиха или из главного списка)
+                const currentOrigin = modalContent.classList.contains('related-view-active') && currentPoemIdInModal === null ? 'mainList' : 'poemMeta';
+                if (type && value) showRelatedContent(type, value, currentOrigin);
+            }
+        });
+
+        // Закрытие модалки по клику на фон
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Закрытие модалки/возврат по Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                if (modalContent.classList.contains('related-view-active')) {
+                    // Если мы в режиме связанных стихов
+                    const backButtonAction = document.getElementById('modalBackButton')?.onclick;
+                    if (typeof backButtonAction === 'function') {
+                         // Имитируем клик по кнопке "Назад"
+                         document.getElementById('modalBackButton').click();
+                    } else {
+                        // Если кнопки нет или что-то пошло не так, просто закрываем
+                        closeModal();
+                    }
+                } else {
+                    // Если мы в режиме просмотра стиха, закрываем модалку
+                    closeModal();
+                }
+            }
+        });
+
+        // Плавная прокрутка к якорям (упрощенная, т.к. offset делает CSS)
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                // Игнорируем пустые ссылки, ссылки внутри модалки и кнопки фильтров
+                if (!href || href === '#' || href === '#!' || this.closest('.modal-content') || this.classList.contains('collection-link')) return;
+
+                let targetElement;
+                try {
+                    // Простая проверка селектора
+                    if (!/^#[a-zA-Z][\w:.-]*$/.test(href)) {
+                        console.warn(`Invalid selector for smooth scroll: ${href}`);
+                        return;
+                    }
+                    targetElement = document.querySelector(href);
+                } catch (err) {
+                    console.warn(`Invalid selector for smooth scroll: ${href}`, err);
+                    return;
+                }
+
+                if (targetElement) {
+                    e.preventDefault(); // Предотвращаем стандартный переход
+                    closeMenu(); // Закрываем мобильное меню, если открыто
+                    // Просто позволяем CSS scroll-behavior и scroll-padding-top сделать свою работу
+                    // window.scrollTo не нужен, если цель - просто перейти к якорю
+                    // Если нужно принудительно вызвать smooth scroll через JS:
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    console.warn(`Target element not found for smooth scroll: ${href}`);
+                }
+            });
+        });
+
+        // --- Initialization ---
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        // Загружаем данные при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => fetchData(getAuthorIdentifier()));
+
+        // Переопределяем глобальную функцию fetchData для кнопки "Попробовать снова"
+        window.fetchData = fetchData;
+        window.getAuthorIdentifier = getAuthorIdentifier; // Делаем доступной глобально для inline onclick
+
+    </script>
+</body>
+</html>
