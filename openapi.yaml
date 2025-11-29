@@ -1,8 +1,10 @@
 openapi: 3.0.0
 info:
   title: StihiRus Reader API
-  description: Provides access to author data and poems from stihirus.ru via the stihirus-reader library.
-  version: 1.2.0
+  description: >
+    Provides access to author data and poems from stihirus.ru with advanced caching (PostgreSQL),
+    full-text search, filtering, and system monitoring.
+  version: 1.3.0
 servers:
   - url: /
     description: Current server
@@ -10,45 +12,102 @@ servers:
 paths:
   /author/{identifier}:
     get:
-      summary: Get Author Data and Poems
-      description: Fetches author profile information and optionally poems based on the page parameter.
+      summary: Get Author Data, Poems, and Search
+      description: >
+        Fetches author profile and poems. Supports "Smart Sync" (incremental fetching),
+        searching by text, filtering by year/rubric, and sorting.
+        If `page` is provided, fetches specific page from source.
+        If `page` is null/missing, syncs new content and returns full database result matching filters.
       parameters:
         - name: identifier
           in: path
           required: true
-          description: Author identifier (numeric ID or string username/URL part).
+          description: Author identifier (numeric ID or string username).
           schema:
-            type: string # Use string even for ID to simplify path handling
+            type: string
             example: "oreh-orehov"
+        
+        # --- Standard Fetch Params ---
         - name: page
           in: query
           required: false
-          description: Controls poem fetching. `null` or empty = all poems, `0` = profile only, `N > 0` = specific page N. Defaults to `null`.
+          description: >
+            Specific page number to fetch from source (e.g., "1", "5").
+            If omitted or null, "Smart Sync" mode is used (checks DB, fetches only new items).
           schema:
-            type: string # Allow 'null', '0', or positive integers as strings
+            type: string
             example: "1"
         - name: delay
           in: query
           required: false
-          description: Delay in ms between requests when fetching all pages (`page=null`). Defaults to 500ms.
+          description: Delay in ms between requests during syncing. Defaults to 500ms.
           schema:
             type: integer
-            format: int32
-            minimum: 0
-            example: 500
+            default: 500
+
+        # --- Search & Filter Params ---
+        - name: q
+          in: query
+          required: false
+          description: Text search query. Matches against fields specified in `searchFields`.
+          schema:
+            type: string
+            example: "любовь"
+        - name: searchFields
+          in: query
+          required: false
+          description: >
+            Comma-separated fields to search in. Default: "title,text".
+            Allowed: "title", "text", "rubric".
+          schema:
+            type: string
+            example: "title,text"
+        - name: year
+          in: query
+          required: false
+          description: Filter poems by publication year.
+          schema:
+            type: string
+            example: "2024"
+        - name: rubric
+          in: query
+          required: false
+          description: Filter by exact rubric name.
+          schema:
+            type: string
+            example: "Любовная лирика"
+        - name: collection
+          in: query
+          required: false
+          description: Filter by collection name (from metadata).
+          schema:
+            type: string
+        
+        # --- Sorting ---
+        - name: sort
+          in: query
+          required: false
+          description: >
+            Sorting logic. Default: "date_desc".
+            Options: 
+            - "date_desc" (Newest first)
+            - "date_asc" (Oldest first)
+            - "popular" (or "rating_desc" - Most likes first)
+            - "rating_asc" (Least likes first)
+            - "title_asc" (A-Z)
+            - "title_desc" (Z-A)
+          schema:
+            type: string
+            enum: [date_desc, date_asc, popular, rating_desc, rating_asc, title_asc, title_desc]
+            default: date_desc
+
       responses:
         '200':
-          description: Successful response with author data.
+          description: Successful response with author data and filtered poems.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StihirusSuccessResponse'
-        '400':
-          description: Invalid input parameter (identifier, page, or delay).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
         '404':
           description: Author not found.
           content:
@@ -56,19 +115,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/StihirusErrorResponse'
         '500':
-          description: Internal server error or error fetching/parsing data from stihirus.ru.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
-        '502':
-          description: Bad Gateway (HTTP error from stihirus.ru).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
-        '503':
-          description: Service Unavailable (Network error connecting to stihirus.ru).
+          description: Server error.
           content:
             application/json:
               schema:
@@ -76,53 +123,68 @@ paths:
 
   /author/{identifier}/filters:
     get:
-      summary: Get Author Poem Filters
-      description: Fetches available filter options (rubrics, dates) for an author's poems.
+      summary: Get Available Filters
+      description: Fetches available rubrics and years for an author to build UI filters.
       parameters:
         - name: identifier
           in: path
           required: true
-          description: Author identifier (numeric ID or string username/URL part).
           schema:
             type: string
-            example: "14260"
       responses:
         '200':
-          description: Successful response with filter data.
+          description: Successful response.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StihirusFiltersSuccessResponse'
-        '400':
-          description: Invalid identifier format.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
-        '404':
-          description: Author not found.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
         '500':
-          description: Internal server error or error fetching/parsing data from stihirus.ru.
+          description: Server error.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StihirusErrorResponse'
-        '502':
-          description: Bad Gateway (HTTP error from stihirus.ru).
+
+  /stats:
+    get:
+      summary: System Statistics
+      description: Returns plain text report about DB usage, traffic, and content counts.
+      responses:
+        '200':
+          description: Plain text stats.
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
-        '503':
-          description: Service Unavailable (Network error connecting to stihirus.ru).
+                type: string
+                example: |
+                  --- NEON DB & API STATISTICS ---
+                  Requests (Total): 1542
+                  Content: 50 authors, 12050 poems
+
+  /logs:
+    get:
+      summary: Server Logs
+      description: Returns last 500 request logs in plain text (newest first).
+      responses:
+        '200':
+          description: Plain text logs.
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/StihirusErrorResponse'
+                type: string
+
+  /robots.txt:
+    get:
+      summary: Robots Exclusion Protocol
+      description: Returns robots.txt content allowing only root and /stihi paths.
+      responses:
+        '200':
+          description: robots.txt file.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "User-agent: *\nAllow: /$\nAllow: /stihi\nDisallow: /"
 
 components:
   schemas:
@@ -131,17 +193,9 @@ components:
       properties:
         code:
           type: integer
-          format: int32
-          description: HTTP status or custom error code.
         message:
           type: string
-          description: Error message.
-        originalMessage:
-          type: string
-          description: Optional underlying error message.
-      required:
-        - code
-        - message
+      required: [code, message]
 
     StihirusErrorResponse:
       type: object
@@ -151,55 +205,18 @@ components:
           enum: [error]
         error:
           $ref: '#/components/schemas/StihirusError'
-      required:
-        - status
-        - error
+      required: [status, error]
 
     StihirusAuthorStats:
       type: object
       properties:
         poems:
           type: integer
-          description: Total number of poems (from profile HTML).
         reviewsSent:
           type: integer
-          description: Number of reviews sent.
         reviewsReceived:
           type: integer
-          description: Number of reviews received.
-      required:
-        - poems
-        - reviewsSent
-        - reviewsReceived
-
-    StihirusCollectionInfo:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Collection name.
-        url:
-          type: string
-          format: url
-          description: Full URL to the collection.
-      required:
-        - name
-        - url
-
-    StihirusPoemRubric:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Rubric name.
-        url:
-          type: string
-          format: url
-          nullable: true
-          description: Full URL to the rubric page, or null.
-      required:
-        - name
-        - url
+      required: [poems, reviewsSent, reviewsReceived]
 
     StihirusPoem:
       type: object
@@ -207,98 +224,51 @@ components:
         id:
           type: integer
           format: int64
-          description: Unique ID.
         title:
           type: string
-          description: Title (or '***').
         text:
           type: string
-          description: Full text.
         created:
           type: string
-          description: Creation date/time string (e.g., "27.03.2025 20:19").
         rubric:
-          $ref: '#/components/schemas/StihirusPoemRubric'
+          type: object
+          properties:
+            name: { type: string }
+            url: { type: string, nullable: true }
         collection:
           type: string
           nullable: true
-          description: Author's collection name, or null.
         rating:
           type: integer
-          description: Likes count.
         commentsCount:
           type: integer
-          description: Comments count.
         imageUrl:
           type: string
-          format: url
           nullable: true
-          description: URL to poem's image, or null.
         hasCertificate:
           type: boolean
-          description: Whether it has a certificate.
-      required:
-        - id
-        - title
-        - text
-        - created
-        - rubric
-        - collection
-        - rating
-        - commentsCount
-        - imageUrl
-        - hasCertificate
+      required: [id, title, text, created, rating]
 
     StihirusAuthorData:
       type: object
       properties:
-        authorId:
-          type: integer
-          format: int64
-        username:
-          type: string
-        profileUrl:
-          type: string
-          format: url
-        canonicalUsername:
-          type: string
-        description:
-          type: string
-        avatarUrl:
-          type: string
-          format: url
-          nullable: true
-        headerUrl:
-          type: string
-          format: url
-          nullable: true
-        status:
-          type: string
-        lastVisit:
-          type: string
+        authorId: { type: integer }
+        username: { type: string }
+        profileUrl: { type: string }
+        canonicalUsername: { type: string }
+        description: { type: string }
+        avatarUrl: { type: string, nullable: true }
         stats:
           $ref: '#/components/schemas/StihirusAuthorStats'
         collections:
           type: array
           items:
-            $ref: '#/components/schemas/StihirusCollectionInfo'
+            type: object # Simplified for brevity, detailed structure available if needed
         poems:
           type: array
           items:
             $ref: '#/components/schemas/StihirusPoem'
-      required:
-        - authorId
-        - username
-        - profileUrl
-        - canonicalUsername
-        - description
-        - avatarUrl
-        - headerUrl
-        - status
-        - lastVisit
-        - stats
-        - collections
-        - poems
+      required: [username, profileUrl, stats, poems]
 
     StihirusSuccessResponse:
       type: object
@@ -308,43 +278,7 @@ components:
           enum: [success]
         data:
           $ref: '#/components/schemas/StihirusAuthorData'
-      required:
-        - status
-        - data
-
-    StihirusFilterRubric:
-      type: object
-      properties:
-        id:
-          type: integer
-          description: Rubric ID used for filtering.
-        name:
-          type: string
-          description: Display name of the rubric.
-        count:
-          type: integer
-          description: Number of poems in this rubric.
-      required:
-        - id
-        - name
-        - count
-
-    StihirusFilterDate:
-      type: object
-      properties:
-        year:
-          type: integer
-          description: Year used for filtering.
-        month:
-          type: integer
-          description: Month used for filtering (1-12).
-        count:
-          type: integer
-          description: Number of poems published in this month/year.
-      required:
-        - year
-        - month
-        - count
+      required: [status, data]
 
     StihirusAuthorFiltersData:
       type: object
@@ -352,14 +286,20 @@ components:
         rubrics:
           type: array
           items:
-            $ref: '#/components/schemas/StihirusFilterRubric'
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              count: { type: integer }
         dates:
           type: array
           items:
-            $ref: '#/components/schemas/StihirusFilterDate'
-      required:
-        - rubrics
-        - dates
+            type: object
+            properties:
+              year: { type: integer }
+              month: { type: integer }
+              count: { type: integer }
+      required: [rubrics, dates]
 
     StihirusFiltersSuccessResponse:
       type: object
@@ -369,6 +309,4 @@ components:
           enum: [success]
         data:
           $ref: '#/components/schemas/StihirusAuthorFiltersData'
-      required:
-        - status
-        - data
+      required: [status, data]

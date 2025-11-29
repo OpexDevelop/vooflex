@@ -4,9 +4,10 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs/promises';
+import pg from 'pg';
 import { getAuthorData, getAuthorFilters } from 'stihirus-reader';
 
+const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -15,19 +16,95 @@ const port = process.env.PORT || 30010;
 
 app.use(cors());
 
-const IS_VERCEL = process.env.VERCEL || process.env.AWS_REGION;
-const CACHE_DIR = IS_VERCEL ? '/tmp' : __dirname;
-const CACHE_DURATION_MS = 60 * 60 * 1000;
+// --- DATABASE CONFIGURATION ---
+const pool = new Pool({
+    connectionString: process.env.POSTGRES_URL, 
+    ssl: { rejectUnauthorized: false }, 
+    max: 20, 
+    idleTimeoutMillis: 30000
+});
 
+// --- INIT DB ---
+async function initDB() {
+    const client = await pool.connect();
+    try {
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS request_logs (
+                id SERIAL PRIMARY KEY,
+                method VARCHAR(10),
+                path TEXT,
+                status INTEGER,
+                duration_ms INTEGER,
+                ip VARCHAR(50),
+                user_agent TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_logs_created ON request_logs(created_at);`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS authors (
+                id SERIAL PRIMARY KEY,
+                identifier VARCHAR(255) UNIQUE NOT NULL,
+                username VARCHAR(255),
+                real_name VARCHAR(255),
+                profile_url TEXT,
+                avatar_url TEXT,
+                description TEXT,
+                stats JSONB, 
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS poems (
+                id BIGINT PRIMARY KEY,
+                author_identifier VARCHAR(255) REFERENCES authors(identifier) ON DELETE CASCADE,
+                title TEXT,
+                text TEXT,
+                created_str VARCHAR(50), 
+                rubric_name TEXT,
+                metadata JSONB, 
+                fetched_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_poems_author ON poems(author_identifier);`);
+        
+        console.log("DB Schema & Logs initialized.");
+    } catch (err) {
+        console.error("DB Init Error:", err);
+    } finally {
+        client.release();
+    }
+}
+initDB();
+
+// --- LOGGER ---
+app.use(async (req, res, next) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function (...args) {
+        const duration = Date.now() - start;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        pool.query(`
+            INSERT INTO request_logs (method, path, status, duration_ms, ip, user_agent)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        `, [req.method, req.originalUrl, res.statusCode, duration, ip, req.headers['user-agent']])
+        .catch(err => console.error("Log fail:", err));
+        originalEnd.apply(res, args);
+    };
+    next();
+});
+
+// --- SWAGGER SETUP (FIXED FOR VERCEL) ---
 let swaggerDocument;
 try {
-    const yamlPath = path.join(process.cwd(), 'openapi.yaml');
-    swaggerDocument = YAML.load(yamlPath);
+    swaggerDocument = YAML.load(path.join(process.cwd(), 'openapi.yaml'));
 } catch (e) {
     try {
         swaggerDocument = YAML.load(path.join(__dirname, 'openapi.yaml'));
     } catch (e2) {
-        console.error(e2);
+        console.error("Swagger YAML not found:", e2);
     }
 }
 
@@ -43,48 +120,175 @@ if (swaggerDocument) {
     app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, swaggerOptions));
 }
 
-function generateCacheKey(prefix, identifier, queryParams = {}) {
-    const identifierPart = String(identifier).replace(/[^a-zA-Z0-9_-]/g, '_');
-    let queryPart = '';
-    const sortedKeys = Object.keys(queryParams).sort();
-    sortedKeys.forEach(key => {
-        if (queryParams[key] !== undefined && queryParams[key] !== null) {
-            queryPart += `_${key}_${String(queryParams[key])}`;
-        } else if (queryParams[key] === null) {
-             queryPart += `_${key}_null`;
-        }
-    });
-    return `_cache_${prefix}_${identifierPart}${queryPart}.json`;
-}
+// --- HELPERS ---
 
-async function readCache(key) {
-    const filePath = path.join(CACHE_DIR, key);
+async function savePageToDB(identifier, data) {
+    const client = await pool.connect();
     try {
-        const stats = await fs.stat(filePath);
-        const now = Date.now();
-        const mtime = stats.mtime.getTime();
-        const isStale = (now - mtime) > CACHE_DURATION_MS;
-        const content = await fs.readFile(filePath, 'utf-8');
-        const data = JSON.parse(content);
-        return { data, isStale, exists: true, mtime };
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            return { exists: false };
+        await client.query('BEGIN');
+        await client.query(`
+            INSERT INTO authors (identifier, username, real_name, profile_url, avatar_url, description, stats, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (identifier) DO UPDATE 
+            SET username=EXCLUDED.username, stats=EXCLUDED.stats, updated_at=NOW();
+        `, [identifier, data.username, data.canonicalUsername, data.profileUrl, data.avatarUrl, data.description, JSON.stringify(data.stats)]);
+
+        if (data.poems && data.poems.length > 0) {
+            for (const poem of data.poems) {
+                const meta = {
+                    collection: poem.collection,
+                    rating: poem.rating,
+                    commentsCount: poem.commentsCount,
+                    imageUrl: poem.imageUrl,
+                    hasCertificate: poem.hasCertificate,
+                    rubricUrl: poem.rubric?.url
+                };
+                await client.query(`
+                    INSERT INTO poems (id, author_identifier, title, text, created_str, rubric_name, metadata, fetched_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                    ON CONFLICT (id) DO UPDATE
+                    SET title=EXCLUDED.title, text=EXCLUDED.text, metadata=EXCLUDED.metadata, fetched_at=NOW();
+                `, [poem.id, identifier, poem.title, poem.text, poem.created, poem.rubric?.name, JSON.stringify(meta)]);
+            }
         }
-        return { exists: false, error: true };
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error("Save Error:", e);
+    } finally {
+        client.release();
     }
 }
 
-async function writeCache(key, data) {
-    const filePath = path.join(CACHE_DIR, key);
+async function checkExistingIds(ids) {
+    if (ids.length === 0) return [];
+    const query = `SELECT id FROM poems WHERE id = ANY($1::bigint[])`;
+    const res = await pool.query(query, [ids]);
+    return res.rows.map(r => parseInt(r.id));
+}
+
+// --- CORE SEARCH & FILTER & SORT ---
+async function getFilteredPoemsFromDB(identifier, queryParams) {
+    const client = await pool.connect();
     try {
-        const content = JSON.stringify(data);
-        await fs.writeFile(filePath, content, 'utf-8');
-    } catch (err) {
-        console.error(err);
+        let sql = `SELECT * FROM poems WHERE author_identifier = $1`;
+        let values = [identifier];
+        let paramIndex = 2;
+
+        const { q, searchFields, sort, year, rubric, collection } = queryParams;
+
+        // 1. FILTERS
+        if (rubric && rubric !== 'all') {
+            sql += ` AND rubric_name = $${paramIndex}`;
+            values.push(rubric);
+            paramIndex++;
+        }
+        if (collection && collection !== 'all') {
+            if (collection === 'Без сборника') {
+                sql += ` AND (metadata->>'collection' IS NULL OR metadata->>'collection' = 'null')`;
+            } else {
+                sql += ` AND metadata->>'collection' = $${paramIndex}`;
+                values.push(collection);
+                paramIndex++;
+            }
+        }
+        if (year && year !== 'all') {
+            sql += ` AND created_str LIKE $${paramIndex}`;
+            values.push(`%${year}%`);
+            paramIndex++;
+        }
+
+        // 2. SEARCH (Text)
+        if (q) {
+            const fieldsToCheck = searchFields ? searchFields.split(',') : ['title', 'text'];
+            const searchConditions = [];
+            fieldsToCheck.forEach(field => {
+                const f = field.trim();
+                if (f === 'title') searchConditions.push(`title ILIKE $${paramIndex}`);
+                if (f === 'text') searchConditions.push(`text ILIKE $${paramIndex}`);
+                if (f === 'rubric') searchConditions.push(`rubric_name ILIKE $${paramIndex}`);
+            });
+            if (searchConditions.length > 0) {
+                sql += ` AND (${searchConditions.join(' OR ')})`;
+                values.push(`%${q}%`);
+                paramIndex++;
+            }
+        }
+
+        // 3. SORTING
+        let orderBy = `ORDER BY id DESC`; 
+
+        if (sort) {
+            switch (sort) {
+                case 'date_asc':
+                    orderBy = `ORDER BY id ASC`;
+                    break;
+                case 'date_desc':
+                    orderBy = `ORDER BY id DESC`;
+                    break;
+                case 'popular':
+                case 'rating_desc':
+                    orderBy = `ORDER BY COALESCE((metadata->>'rating')::int, 0) DESC, id DESC`;
+                    break;
+                case 'rating_asc':
+                    orderBy = `ORDER BY COALESCE((metadata->>'rating')::int, 0) ASC, id DESC`;
+                    break;
+                case 'title_asc':
+                    orderBy = `ORDER BY title ASC`;
+                    break;
+                case 'title_desc':
+                    orderBy = `ORDER BY title DESC`;
+                    break;
+                default:
+                    orderBy = `ORDER BY id DESC`;
+            }
+        }
+
+        sql += ` ${orderBy}`;
+
+        const res = await client.query(sql, values);
+        
+        const authorRes = await client.query(`SELECT * FROM authors WHERE identifier = $1`, [identifier]);
+        if (authorRes.rows.length === 0) return null;
+        const author = authorRes.rows[0];
+
+        const poems = res.rows.map(row => ({
+            id: parseInt(row.id),
+            title: row.title,
+            text: row.text,
+            created: row.created_str,
+            rubric: { name: row.rubric_name, url: row.metadata.rubricUrl },
+            collection: row.metadata.collection,
+            rating: row.metadata.rating,
+            commentsCount: row.metadata.commentsCount,
+            imageUrl: row.metadata.imageUrl,
+            hasCertificate: row.metadata.hasCertificate
+        }));
+
+        return {
+            status: 'success',
+            data: {
+                authorId: 0,
+                username: author.username,
+                canonicalUsername: author.username,
+                profileUrl: author.profile_url,
+                avatarUrl: author.avatar_url,
+                description: author.description,
+                stats: author.stats,
+                collections: [], // Populated on client or separately if needed
+                poems: poems
+            }
+        };
+
+    } finally {
+        client.release();
     }
 }
 
+
+// --- ROUTES ---
+
+// 1. STATIC HTML ROUTES (NEW)
 app.get('/', (req, res) => {
     const indexPath = path.join(process.cwd(), 'public', 'index.html');
     res.sendFile(indexPath);
@@ -95,100 +299,117 @@ app.get('/stihi', (req, res) => {
     res.sendFile(stihiPath);
 });
 
+// 2. Robots
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.send(`User-agent: *\nAllow: /$\nAllow: /stihi\nAllow: /docs\nDisallow: /`);
+});
+
+// 3. Logs
+app.get('/logs', async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT * FROM request_logs ORDER BY id DESC LIMIT 500`);
+        res.type('text/plain');
+        let output = "--- SERVER LOGS (Last 500) ---\nFormat: [Time] [Method] [Status] [Duration] IP Path\n\n";
+        result.rows.forEach(row => {
+            const date = new Date(row.created_at).toISOString();
+            output += `[${date}] [${row.method}] [${row.status}] [${row.duration_ms}ms] ${row.ip} ${row.path}\n`;
+        });
+        res.send(output);
+    } catch (e) { res.status(500).send("Log Error"); }
+});
+
+// 4. Stats
+app.get('/stats', async (req, res) => {
+    try {
+        const client = await pool.connect();
+        const count = async (t) => (await client.query(`SELECT COUNT(*) FROM ${t}`)).rows[0].count;
+        const countSince = async (i) => (await client.query(`SELECT COUNT(*) FROM request_logs WHERE created_at > NOW() - INTERVAL '${i}'`)).rows[0].count;
+        
+        const [totalReq, week, month, year, authors, poems, dbSize] = await Promise.all([
+            count('request_logs'), countSince('1 week'), countSince('1 month'), countSince('1 year'),
+            count('authors'), count('poems'), client.query("SELECT pg_size_pretty(pg_database_size(current_database())) as size")
+        ]);
+        const avg = (await client.query('SELECT AVG(duration_ms) as avg FROM request_logs')).rows[0].avg;
+        
+        let out = `--- STATS ---\nRequests (Total): ${totalReq}\nRequests (7d): ${week}\nRequests (30d): ${month}\nAvg Latency: ${Math.round(avg)}ms\n`;
+        out += `Content: ${authors} authors, ${poems} poems\nDB Size: ${dbSize.rows[0].size}\n`;
+        client.release();
+        res.type('text/plain').send(out);
+    } catch (e) { res.status(500).send("Stats Error"); }
+});
+
+// MAIN API ENDPOINT
 app.get('/author/:identifier', async (req, res) => {
     const identifier = req.params.identifier;
     let page = req.query.page;
-    let delay = req.query.delay;
-    let pageNum = null;
+    let delayMs = req.query.delay ? parseInt(req.query.delay) : 500;
     
-    if (page !== undefined) {
-        const parsedPage = parseInt(page, 10);
-        if (!isNaN(parsedPage) && parsedPage >= 0) {
-            pageNum = parsedPage;
-        } else if (page === 'null' || page === '') {
-             pageNum = null;
-        } else {
-            return res.status(400).json({ status: 'error', error: { code: 400, message: 'Invalid page parameter.' } });
-        }
-    }
-
-    let delayMs = undefined;
-     if (delay !== undefined) {
-        const parsedDelay = parseInt(delay, 10);
-        if (!isNaN(parsedDelay) && parsedDelay >= 0) {
-            delayMs = parsedDelay;
-        } else {
-             return res.status(400).json({ status: 'error', error: { code: 400, message: 'Invalid delay parameter.' } });
-        }
-    }
-
-    const cacheKey = generateCacheKey('author', identifier, { page: pageNum });
-    let cacheEntry = null;
+    const isSpecificPage = (page !== undefined && page !== 'null' && page !== '');
+    const pageNum = isSpecificPage ? parseInt(page, 10) : null;
 
     try {
-        cacheEntry = await readCache(cacheKey);
-        if (cacheEntry.exists && !cacheEntry.isStale) {
-            return res.json(cacheEntry.data);
-        }
-
-        const freshResult = await getAuthorData(identifier, pageNum, delayMs);
-        
-        if (freshResult.status === 'success') {
-            await writeCache(cacheKey, freshResult);
-            return res.json(freshResult);
-        } else {
-            if (cacheEntry.exists) {
-                return res.json(cacheEntry.data);
+        // --- DATA SYNC ---
+        if (isSpecificPage) {
+            const freshData = await getAuthorData(identifier, pageNum, delayMs);
+            if (freshData.status === 'success') {
+                await savePageToDB(identifier, freshData.data);
+                // Return immediate page data if just specific page requested without filters
+                if (!req.query.q && !req.query.year && !req.query.rubric && !req.query.sort) {
+                    return res.json(freshData);
+                }
             } else {
-                return res.status(freshResult.error.code >= 400 && freshResult.error.code < 600 ? freshResult.error.code : 500).json(freshResult);
+                 return res.status(freshData.error?.code || 500).json(freshData);
+            }
+        } else {
+            // Smart Sync (Check page 1)
+            const checkResult = await getAuthorData(identifier, 1, delayMs);
+            if (checkResult.status === 'success') {
+                await savePageToDB(identifier, checkResult.data);
+                const fetchedIds = (checkResult.data.poems || []).map(p => p.id);
+                const existingIds = await checkExistingIds(fetchedIds);
+
+                if (existingIds.length !== fetchedIds.length) {
+                    console.log(`[${identifier}] Syncing new content...`);
+                    let currentPage = 2;
+                    let keepFetching = true;
+                    while (keepFetching) {
+                        const pageRes = await getAuthorData(identifier, currentPage, delayMs);
+                        if (pageRes.status !== 'success' || !pageRes.data.poems.length) break;
+                        const pIds = pageRes.data.poems.map(p => p.id);
+                        const eIds = await checkExistingIds(pIds);
+                        await savePageToDB(identifier, pageRes.data);
+                        if (eIds.length === pIds.length) keepFetching = false;
+                        else currentPage++;
+                    }
+                }
             }
         }
+
+        // --- FETCH & SORT & RETURN ---
+        const finalResponse = await getFilteredPoemsFromDB(identifier, req.query);
+        if (finalResponse) return res.json(finalResponse);
+        return res.status(404).json({ status: 'error', error: { code: 404, message: 'Author not found' } });
+
     } catch (err) {
-         if (cacheEntry && cacheEntry.exists) {
-             return res.json(cacheEntry.data);
-         } else {
-            return res.status(500).json({ status: 'error', error: { code: 500, message: 'Internal Server Error' } });
-         }
+        console.error(err);
+        return res.status(500).json({ status: 'error', error: { code: 500, message: err.message } });
     }
 });
 
 app.get('/author/:identifier/filters', async (req, res) => {
-    const identifier = req.params.identifier;
-    const cacheKey = generateCacheKey('filters', identifier);
-    let cacheEntry = null;
-
-     try {
-        cacheEntry = await readCache(cacheKey);
-        if (cacheEntry.exists && !cacheEntry.isStale) {
-            return res.json(cacheEntry.data);
-        }
-
-        const freshResult = await getAuthorFilters(identifier);
-        
-         if (freshResult.status === 'success') {
-            await writeCache(cacheKey, freshResult);
-            return res.json(freshResult);
-        } else {
-             if (cacheEntry.exists) {
-                return res.json(cacheEntry.data);
-             } else {
-                return res.status(freshResult.error.code >= 400 && freshResult.error.code < 600 ? freshResult.error.code : 500).json(freshResult);
-             }
-        }
-    } catch (err) {
-         if (cacheEntry && cacheEntry.exists) {
-             return res.json(cacheEntry.data);
-         } else {
-            return res.status(500).json({ status: 'error', error: { code: 500, message: 'Internal Server Error' } });
-         }
+    try {
+        const result = await getAuthorFilters(req.params.identifier);
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    app.listen(port, () => {
-        console.log(`Server listening on port: ${port}`);
-    });
+    app.listen(port, () => console.log(`Server listening on port: ${port}`));
 }
 
 export default app;
+
 

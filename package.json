@@ -13,7 +13,8 @@
     "express": "^4.19.2",
     "stihirus-reader": "^1.2.0",
     "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
+    "yamljs": "^0.3.0",
+    "pg": "^8.11.3"
   },
   "engines": {
     "node": ">=18.0.0"
