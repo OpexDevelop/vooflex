@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Орех Орехов | Стихи</title> <!-- Title будет обновлен JS -->
+    <title>Орех Орехов | Стихи</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=fallback" rel="stylesheet">
@@ -19,9 +19,7 @@
             --error-color: #f87171;
             --loading-color: #60a5fa;
             --header-height: 4rem; 
-}
-
-
+        }
 
         * {
             margin: 0;
@@ -31,22 +29,16 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Focus styles */
-        a:focus-visible, .modal-related-link:focus-visible, .modal-related-poem:focus-visible, .collection-link:focus-visible, #modalBackButton:focus-visible, .poem-card:focus-visible, button:focus-visible, .btn:focus-visible, .hamburger:focus-visible {
+        a:focus-visible, .modal-related-link:focus-visible, .modal-related-poem:focus-visible, .collection-link:focus-visible, #modalBackButton:focus-visible, .poem-card:focus-visible, button:focus-visible, .btn:focus-visible, .hamburger:focus-visible, input:focus-visible, select:focus-visible {
             outline: 2px solid var(--highlight);
             outline-offset: 2px;
             border-radius: 2px;
         }
-        /* Убираем стандартный outline для кнопок, так как есть focus-visible */
-        button {
-             outline: none;
-        }
-
+        button { outline: none; }
 
         html {
             scroll-behavior: smooth;
-            /* --- IMPROVEMENT: CSS Scroll Padding --- */
-            scroll-padding-top: calc(var(--header-height) + 1rem); /* Отступ для плавной прокрутки к якорям */
+            scroll-padding-top: calc(var(--header-height) + 1rem);
         }
 
         body {
@@ -86,7 +78,6 @@
             font-weight: 600;
             font-size: 1.2rem;
             letter-spacing: -0.5px;
-            /* --- IMPROVEMENT: Logo Link Style --- */
             text-decoration: none;
             color: inherit;
         }
@@ -128,7 +119,7 @@
         }
 
          .hamburger {
-            display: none;
+            display: flex; 
             cursor: pointer;
             width: 24px;
             height: 16px;
@@ -137,6 +128,8 @@
             background: none;
             border: none;
             padding: 0;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .hamburger span {
@@ -167,12 +160,13 @@
             position: fixed;
             top: 0;
             right: -100%;
-            width: 70%;
-            max-width: 300px;
+            width: 80%;
+            max-width: 320px;
             height: 100vh;
             z-index: 100;
             transition: right 0.4s cubic-bezier(0.23, 1, 0.32, 1);
             display: block;
+            padding-top: 5rem;
         }
 
         .mobile-menu.active {
@@ -181,7 +175,7 @@
 
         .mobile-nav {
             list-style: none;
-            padding: 6rem 2rem;
+            padding: 1rem 2rem;
         }
 
         .mobile-nav li {
@@ -200,8 +194,38 @@
             color: var(--highlight);
         }
 
+        .search-container {
+            padding: 0 2rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(240, 240, 240, 0.5);
+        }
+        
+        .search-input:focus {
+            border-color: var(--highlight);
+        }
+        .search-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            border-style: dashed;
+        }
+
          main {
-            padding: calc(var(--header-height) + 2rem) 1rem 4rem; /* Учитываем высоту шапки */
+            padding: calc(var(--header-height) + 2rem) 1rem 4rem; 
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -231,6 +255,7 @@
             transition: all 0.3s ease;
             cursor: pointer;
             margin-top: 1.5rem;
+            font-family: inherit;
         }
 
         .btn:hover {
@@ -239,6 +264,13 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
         }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         @media (max-width: 768px) {
             #about .btn {
                 display: flex;
@@ -247,7 +279,6 @@
                 max-width: fit-content;
             }
         }
-        /* --- IMPROVEMENT: Try Again Button Style --- */
         .try-again-btn {
             margin-top: 1rem;
             display: block;
@@ -266,7 +297,7 @@
 
         .collections-list-container {
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 1.5rem;
             padding: 0 1rem;
         }
 
@@ -300,7 +331,6 @@
             opacity: 0.85;
             display: inline-block;
             cursor: pointer;
-            /* Button reset */
             font-family: inherit;
         }
 
@@ -311,17 +341,77 @@
             opacity: 1;
             transform: translateY(-1px);
         }
+        
+        .collection-link.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--highlight);
+            color: var(--highlight);
+            opacity: 1;
+        }
 
-        .collections-list-container .status-message {
+        .filters-toggle-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .filter-panel {
+            display: none;
+            max-width: 800px;
+            margin: 0 auto 2rem auto;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .filter-panel.active {
+            display: flex;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 200px;
+            flex: 1;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-left: 0.2rem;
+        }
+
+        .filter-select {
+            appearance: none;
+            padding: 0.6rem 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            color: var(--text);
             font-size: 0.95rem;
-            opacity: 0.7;
-            margin-top: 0.5rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .filter-select:hover, .filter-select:focus {
+            border-color: var(--highlight);
+            background: rgba(56, 189, 248, 0.1);
+        }
+        
+        .filter-select option {
+            background-color: #1a1a1a;
+            color: var(--text);
         }
 
         .poems-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .poems-container .status-message {
@@ -334,16 +424,13 @@
         .poems-container .loading { color: var(--loading-color); }
         .poems-container .error { color: var(--error-color); }
 
-        /* --- IMPROVEMENT: Poem Card as Button --- */
         .poem-card {
-            /* Inherit from .frosted-glass */
             background: var(--glass);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-radius: 12px;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            /* Card specific */
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
@@ -358,12 +445,11 @@
                         transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
                         border-color 0.3s ease,
                         box-shadow 0.3s ease;
-            /* Button Resets */
             text-align: left;
             font-family: inherit;
             font-size: inherit;
             color: inherit;
-            width: 100%; /* Ensure button takes full grid width */
+            width: 100%;
         }
 
         .poem-card.visible {
@@ -372,13 +458,11 @@
         }
 
         .poem-card.visible:hover,
-        .poem-card:focus-visible { /* Combine hover and focus-visible for visual consistency */
+        .poem-card:focus-visible {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             border-color: var(--highlight);
         }
-        /* Specific focus style from global rules still applies */
-
 
         .poem-title {
             font-size: 1.2rem;
@@ -438,6 +522,45 @@
              margin-top: 0;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .pagination-btn {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+            padding: 0.5rem 0.9rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            min-width: 40px;
+        }
+        
+        .pagination-btn:hover {
+            border-color: var(--highlight);
+            color: var(--highlight);
+        }
+        
+        .pagination-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--highlight);
+            color: var(--highlight);
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+            border-color: var(--glass-border);
+            color: var(--text);
+        }
+
         @media (max-width: 768px) {
             main > section.frosted-glass {
                 padding: 1.5rem;
@@ -445,6 +568,10 @@
             }
              main > section:first-child {
                  margin-top: 0;
+             }
+             .filter-panel {
+                 padding: 1rem;
+                 gap: 1rem;
              }
         }
 
@@ -466,7 +593,7 @@
             pointer-events: none;
             transition: opacity 0.4s ease;
             padding: 1rem;
-            overflow-y: hidden; /* Prevent body scroll when modal is open */
+            overflow-y: hidden;
         }
 
         .modal.active {
@@ -750,27 +877,21 @@
 
         @media (max-width: 768px) {
             :root {
-                --header-height: 3.5rem; /* Adjust header height for mobile */
+                --header-height: 3.5rem; 
             }
             html {
                  scroll-padding-top: calc(var(--header-height) + 1rem);
             }
             header {
-                padding: 0.8rem 1rem; /* Adjust padding */
+                padding: 0.8rem 1rem; 
             }
 
             nav ul.desktop-nav {
                 display: none;
             }
 
-            .hamburger {
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            }
-
             main {
-                padding: calc(var(--header-height) + 1.5rem) 1rem 3rem; /* Adjust main padding */
+                padding: calc(var(--header-height) + 1.5rem) 1rem 3rem; 
             }
 
             #poems h2 { font-size: 1.5rem; }
@@ -859,7 +980,6 @@
 </head>
 <body>
     <header class="frosted-glass">
-        <!-- --- IMPROVEMENT: Logo as Link --- -->
         <a href="#" class="logo" id="authorLogoLink">
             <span id="authorLogo">Загрузка...</span>
         </a>
@@ -878,6 +998,9 @@
 
     <div class="overlay" id="overlay"></div>
     <div class="mobile-menu frosted-glass" id="mobileMenu">
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Поиск по стихам...">
+        </div>
         <ul class="mobile-nav">
             <li><a href="#poems" onclick="closeMenu()">Стихи</a></li>
             <li><a href="#contact" onclick="closeMenu()">Контакты</a></li>
@@ -891,8 +1014,7 @@
                     <i class="fas fa-feather-alt"></i>
                  </div>
                 <div class="about-text">
-                    <!-- --- IMPROVEMENT: ARIA Live Region --- -->
-                    <div id="authorDescriptionPlaceholder" aria-live="polite">Загрузка описания автора...</div>
+                    <div id="authorDescriptionPlaceholder" aria-live="polite">Загрузка информации об авторе...</div>
                 </div>
             </div>
             <a href="#poems" class="btn">Читать стихи <i class="fas fa-arrow-down"></i></a>
@@ -900,13 +1022,53 @@
 
         <section id="poems">
             <h2>Стихотворения</h2>
-            <div id="collectionsListContainer" class="collections-list-container">
-                <!-- Сборники будут загружены сюда -->
+            
+            <div id="collectionsListContainer" class="collections-list-container"></div>
+
+            <div class="filters-toggle-container">
+                <button class="btn" id="filtersToggleBtn">
+                    <i class="fas fa-filter"></i> Фильтры и сортировка
+                </button>
             </div>
-            <!-- --- IMPROVEMENT: ARIA Live Region --- -->
+
+            <div id="filterPanel" class="filterPanel frosted-glass filter-panel">
+                <div class="filter-group">
+                    <label for="sortSelect">Сортировка</label>
+                    <select id="sortSelect" class="filter-select">
+                        <option value="date_desc">Сначала новые</option>
+                        <option value="date_asc">Сначала старые</option>
+                        <option value="rating_desc">Популярные</option>
+                        <option value="title_asc">По названию (А-Я)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="rubricSelect">Рубрика</label>
+                    <select id="rubricSelect" class="filter-select">
+                        <option value="all">Все рубрики</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="yearSelect">Год написания</label>
+                    <select id="yearSelect" class="filter-select">
+                        <option value="all">Все года</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="perPageSelect">Стихов на странице</label>
+                    <select id="perPageSelect" class="filter-select">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="poems-container" id="poemsContainer" aria-live="polite">
-                 <p class="status-message loading">Загрузка данных автора...</p>
+                 <p class="status-message loading">Подключение к библиотеке...</p>
             </div>
+
+            <div id="paginationContainer" class="pagination"></div>
         </section>
 
         <section id="contact" class="frosted-glass">
@@ -930,9 +1092,7 @@
                 <h3 class="modal-title" id="modalTitle"></h3>
                 <p class="modal-poem" id="modalPoem"></p>
                 <div class="modal-meta" id="modalMeta"></div>
-                <div id="modalRelatedContent">
-                    <!-- Связанный контент будет загружен сюда -->
-                </div>
+                <div id="modalRelatedContent"></div>
             </div>
         </div>
     </div>
@@ -945,507 +1105,403 @@
     </footer>
 
     <script>
-        // --- CONFIGURATION ---
-        const API_BASE_URL = 'https://stihirus-reader-api-vercel.vercel.app';
-        //'http://opexxd.serv00.net:30010'; 
-        const DEFAULT_AUTHOR = 'oreh-orehov'; // Default author if none in URL
-        // --- END CONFIGURATION ---
+        const API_BASE_URL = 'https://vooflex.vercel.app';
+        const DEFAULT_AUTHOR = 'oreh-orehov';
 
-        let allAuthorData = null; // Store full author data
-        let poemsToDisplay = []; // Store poems currently displayed
+        // State Management
+        let currentPoems = [];
+        let allAuthorData = null;
+        let currentPage = 1;
+        let itemsPerPage = 50;
+        let filters = {
+            q: '',
+            sort: 'date_desc',
+            rubric: 'all',
+            year: 'all',
+            collection: 'all'
+        };
 
-        // --- DOM Elements ---
-        const poemsContainer = document.getElementById('poemsContainer');
-        const collectionsListContainer = document.getElementById('collectionsListContainer');
-        const authorLogo = document.getElementById('authorLogo'); // Теперь это span внутри ссылки
-        const authorAvatarContainer = document.getElementById('authorAvatarContainer');
-        const authorDescriptionPlaceholder = document.getElementById('authorDescriptionPlaceholder');
-        const stihirusProfileLink = document.getElementById('stihirusProfileLink');
-        const footerAuthorName = document.getElementById('footerAuthorName');
-        const footerStihirusLink = document.getElementById('footerStihirusLink');
-        const modal = document.getElementById('poemModal');
-        const modalContent = document.getElementById('modalContent');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalPoem = document.getElementById('modalPoem');
-        const modalMeta = document.getElementById('modalMeta');
-        const modalRelatedContent = document.getElementById('modalRelatedContent');
-        const modalContentWrapper = modal.querySelector('.modal-content-wrapper');
-        const modalCloseButton = modal.querySelector('.modal-close');
-        const hamburger = document.getElementById('hamburger');
-        const mobileMenu = document.getElementById('mobileMenu');
-        const overlay = document.getElementById('overlay');
+        // DOM Elements
+        const elems = {
+            poemsContainer: document.getElementById('poemsContainer'),
+            collectionsContainer: document.getElementById('collectionsListContainer'),
+            paginationContainer: document.getElementById('paginationContainer'),
+            authorLogo: document.getElementById('authorLogo'),
+            authorAvatar: document.getElementById('authorAvatarContainer'),
+            authorDesc: document.getElementById('authorDescriptionPlaceholder'),
+            links: {
+                stihirus: document.getElementById('stihirusProfileLink'),
+                footer: document.getElementById('footerStihirusLink'),
+                footerName: document.getElementById('footerAuthorName')
+            },
+            modal: {
+                el: document.getElementById('poemModal'),
+                title: document.getElementById('modalTitle'),
+                poem: document.getElementById('modalPoem'),
+                meta: document.getElementById('modalMeta'),
+                related: document.getElementById('modalRelatedContent'),
+                content: document.getElementById('modalContent'),
+                wrapper: document.querySelector('.modal-content-wrapper')
+            },
+            filters: {
+                panel: document.getElementById('filterPanel'),
+                toggle: document.getElementById('filtersToggleBtn'),
+                sort: document.getElementById('sortSelect'),
+                rubric: document.getElementById('rubricSelect'),
+                year: document.getElementById('yearSelect'),
+                perPage: document.getElementById('perPageSelect'),
+                search: document.getElementById('searchInput')
+            },
+            menu: {
+                btn: document.getElementById('hamburger'),
+                el: document.getElementById('mobileMenu'),
+                overlay: document.getElementById('overlay')
+            }
+        };
 
-        let previouslyFocusedElement = null;
-        let currentPoemIdInModal = null;
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            initUrlParams();
+            loadFilters();
+            fetchData();
+        });
 
-        // --- Helper: Get Author Identifier from URL or Default ---
-        function getAuthorIdentifier() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('author') || DEFAULT_AUTHOR;
+        // Get Author ID from URL or default
+        function getAuthorId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('author') || DEFAULT_AUTHOR;
         }
 
-        // --- Data Fetching ---
-        async function fetchData(identifier) { // Убрали page, так как всегда грузим всё
-            if (!poemsContainer) {
-                console.error("Элемент #poemsContainer не найден!");
+        // Initialize state from URL params
+        function initUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('q')) filters.q = params.get('q');
+            if (params.has('sort')) filters.sort = params.get('sort');
+            if (params.has('rubric')) filters.rubric = params.get('rubric');
+            if (params.has('year')) filters.year = params.get('year');
+            if (params.has('collection')) filters.collection = params.get('collection');
+            if (params.has('page')) currentPage = parseInt(params.get('page')) || 1;
+            if (params.has('perPage')) itemsPerPage = parseInt(params.get('perPage')) || 50;
+
+            // Update UI inputs
+            elems.filters.search.value = filters.q;
+            elems.filters.sort.value = filters.sort;
+            elems.filters.perPage.value = itemsPerPage;
+            // Rubric/Year are set after filter fetch
+        }
+
+        // Sync URL with current state
+        function updateUrl() {
+            const params = new URLSearchParams(window.location.search);
+            
+            if (filters.q) params.set('q', filters.q); else params.delete('q');
+            if (filters.sort !== 'date_desc') params.set('sort', filters.sort); else params.delete('sort');
+            if (filters.rubric !== 'all') params.set('rubric', filters.rubric); else params.delete('rubric');
+            if (filters.year !== 'all') params.set('year', filters.year); else params.delete('year');
+            if (filters.collection !== 'all') params.set('collection', filters.collection); else params.delete('collection');
+            if (currentPage !== 1) params.set('page', currentPage); else params.delete('page');
+            if (itemsPerPage !== 50) params.set('perPage', itemsPerPage); else params.delete('perPage');
+
+            if (getAuthorId() !== DEFAULT_AUTHOR) params.set('author', getAuthorId());
+
+            const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+            window.history.pushState({}, '', newUrl);
+        }
+
+        // Load Filter Options (Rubrics/Years)
+        async function loadFilters() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/author/${getAuthorId()}/filters`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    populateSelect(elems.filters.rubric, json.data.rubrics.map(r => r.name), filters.rubric);
+                    populateSelect(elems.filters.year, json.data.dates.map(d => d.year), filters.year);
+                }
+            } catch (e) {
+                console.error("Filter load error", e);
+            }
+        }
+
+        function populateSelect(select, items, selectedValue) {
+            // Keep first option (All)
+            const first = select.options[0];
+            select.innerHTML = '';
+            select.appendChild(first);
+            
+            const unique = [...new Set(items)].sort((a,b) => b - a); // Sort years desc, rubrics usually strings
+            if (typeof unique[0] === 'string') unique.sort();
+
+            unique.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
+            });
+            select.value = selectedValue;
+        }
+
+        // MAIN FETCH FUNCTION
+        async function fetchData() {
+            elems.poemsContainer.innerHTML = '<p class="status-message loading"><i class="fas fa-spinner fa-spin"></i> Загрузка стихов...</p>';
+            
+            const params = new URLSearchParams();
+            if (filters.q) params.append('q', filters.q);
+            if (filters.sort) params.append('sort', filters.sort);
+            if (filters.rubric !== 'all') params.append('rubric', filters.rubric);
+            if (filters.year !== 'all') params.append('year', filters.year);
+            if (filters.collection !== 'all') params.append('collection', filters.collection);
+            
+            try {
+                // We ask the API for data based on filters.
+                // The API returns the matching dataset. 
+                // We handle pagination UI client-side for the received set (since server returns all matches)
+                const url = `${API_BASE_URL}/author/${getAuthorId()}?${params.toString()}`;
+                const response = await fetch(url);
+                const json = await response.json();
+
+                if (json.status === 'success') {
+                    allAuthorData = json.data;
+                    currentPoems = json.data.poems || [];
+                    updateAuthorUI(json.data);
+                    renderCollections(json.data); // Update collections list
+                    renderPage();
+                } else {
+                    throw new Error(json.error?.message || 'Ошибка API');
+                }
+            } catch (err) {
+                elems.poemsContainer.innerHTML = `<p class="status-message error">Ошибка: ${err.message}</p>`;
+                document.getElementById('about').style.display = 'none'; // Hide if failed completely
+            }
+        }
+
+        // Render functions
+        function updateAuthorUI(data) {
+            document.title = `${data.username} | Стихи`;
+            elems.authorLogo.textContent = data.username;
+            elems.links.footerName.textContent = data.username;
+            elems.links.stihirus.href = data.profileUrl;
+            elems.links.footer.href = data.profileUrl;
+            
+            if (data.avatarUrl) elems.authorAvatar.innerHTML = `<img src="${data.avatarUrl}" alt="Avatar">`;
+            
+            if (data.description) {
+                elems.authorDesc.innerHTML = data.description.split('\n').map(l => `<p>${l}</p>`).join('');
+            }
+        }
+
+        function renderCollections(data) {
+            elems.collectionsContainer.innerHTML = '';
+            
+            // Build unique list from actual poems + metadata collections list
+            const poemCollections = new Set(data.poems.map(p => p.collection).filter(c => c));
+            const metaCollections = (data.collections || []).map(c => c.name);
+            const allCols = [...new Set([...poemCollections, ...metaCollections])].sort();
+
+            if (allCols.length === 0) return;
+
+            const h3 = document.createElement('h3');
+            h3.textContent = 'Сборники:';
+            elems.collectionsContainer.appendChild(h3);
+
+            const ul = document.createElement('ul');
+            ul.className = 'collections-list';
+            
+            // "All" button
+            const createLi = (name, val) => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.className = `collection-link ${filters.collection === val ? 'active' : ''}`;
+                btn.textContent = name;
+                btn.onclick = () => {
+                    filters.collection = val;
+                    currentPage = 1;
+                    updateUrl();
+                    fetchData();
+                };
+                li.appendChild(btn);
+                return li;
+            };
+
+            ul.appendChild(createLi('Все стихи', 'all'));
+            allCols.forEach(col => ul.appendChild(createLi(col, col)));
+            ul.appendChild(createLi('Без сборника', 'Без сборника'));
+
+            elems.collectionsContainer.appendChild(ul);
+        }
+
+        function renderPage() {
+            elems.poemsContainer.innerHTML = '';
+            
+            if (currentPoems.length === 0) {
+                elems.poemsContainer.innerHTML = '<p class="status-message">Стихи не найдены.</p>';
+                elems.paginationContainer.innerHTML = '';
                 return;
             }
-            poemsContainer.innerHTML = '<p class="status-message loading">Загрузка данных автора...</p>';
-            if (collectionsListContainer) collectionsListContainer.innerHTML = '';
-            if (authorDescriptionPlaceholder) authorDescriptionPlaceholder.innerHTML = '<p class="status-message loading">Загрузка описания...</p>'; // Обновляем и описание
 
-            // Всегда запрашиваем все стихи
-            let apiUrl = `${API_BASE_URL}/author/${encodeURIComponent(identifier)}?page=null`;
+            // Client-side pagination logic
+            const totalPages = Math.ceil(currentPoems.length / itemsPerPage);
+            if (currentPage > totalPages) currentPage = 1;
+            
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pagePoems = currentPoems.slice(start, end);
 
-            console.log(`Requesting Author Data: ${apiUrl}`);
-
-            try {
-                const response = await fetch(apiUrl);
-                const result = await response.json();
-
-                if (!response.ok || result.status !== 'success') {
-                    const errorMsg = result?.error?.message || `HTTP ошибка! Статус: ${response.status}`;
-                    const errorCode = result?.error?.code || response.status;
-                    console.error('API Error Response:', result);
-                    throw new Error(errorMsg, { cause: { code: errorCode } });
-                }
-
-                if (result.data) {
-                    allAuthorData = result.data;
-                    poemsToDisplay = allAuthorData.poems || []; // Изначально показываем все
-                    updateAuthorInfoOnPage(allAuthorData);
-                    displayCollections(allAuthorData.collections, allAuthorData.poems);
-                    displayPoems(poemsToDisplay); // Показываем все стихи
-                } else {
-                    throw new Error("Получены некорректные данные от API (нет поля data).");
-                }
-            } catch (error) {
-                 console.error('Ошибка при загрузке данных автора:', error);
-                 let displayError = error.message || 'Неизвестная ошибка.';
-                 if (error.cause?.code === 404) displayError = `Автор '${identifier}' не найден.`;
-                 else if (error instanceof SyntaxError) displayError = `Ошибка ответа сервера (не JSON).`;
-
-                 // --- IMPROVEMENT: Try Again Button ---
-                 poemsContainer.innerHTML = `
-                    <p class="status-message error">Не удалось загрузить данные: ${displayError}</p>
-                    <button class="btn try-again-btn" onclick="fetchData(getAuthorIdentifier())">
-                        <i class="fas fa-redo"></i> Попробовать снова
-                    </button>`;
-                 if (authorDescriptionPlaceholder) authorDescriptionPlaceholder.textContent = 'Не удалось загрузить описание автора.';
-                 if (collectionsListContainer) collectionsListContainer.innerHTML = '';
-                 if (authorLogo) authorLogo.textContent = 'Ошибка';
-                 if (footerAuthorName) footerAuthorName.textContent = 'Ошибка';
-            }
-        }
-
-        // --- Update Author Info in DOM ---
-        function updateAuthorInfoOnPage(authorData) {
-            if (!authorData) return;
-            const authorName = authorData.username || 'Автор';
-            const profileUrl = authorData.profileUrl || '#';
-            const description = authorData.description || '';
-            const avatarUrl = authorData.avatarUrl;
-
-            document.title = `${authorName} | Стихи`;
-            if (authorLogo) authorLogo.textContent = authorName; // Обновляем текст в span
-            if (footerAuthorName) footerAuthorName.textContent = authorName;
-            if (stihirusProfileLink) stihirusProfileLink.href = profileUrl;
-            if (footerStihirusLink) footerStihirusLink.href = profileUrl;
-
-            if (authorDescriptionPlaceholder) {
-                 if (description) {
-                    authorDescriptionPlaceholder.innerHTML = description.split('\n').map(p => p.trim()).filter(p => p).map(p => `<p>${p}</p>`).join('');
-                 } else {
-                     authorDescriptionPlaceholder.innerHTML = '<p><i>Описание автора отсутствует.</i></p>';
-                 }
-            }
-            if (authorAvatarContainer) {
-                authorAvatarContainer.innerHTML = avatarUrl ? `<img src="${avatarUrl}" alt="Аватар ${authorName}">` : '<i class="fas fa-feather-alt"></i>';
-            }
-        }
-
-        // --- Display Collections ---
-        function displayCollections(collections, allPoems) {
-            if (!collectionsListContainer) return;
-            collectionsListContainer.innerHTML = '';
-            if (!allPoems || allPoems.length === 0) return;
-
-            const relevantCollections = new Set();
-            allPoems.forEach(poem => {
-                relevantCollections.add(poem.collection || 'Без сборника');
-            });
-
-            const displayableCollections = (collections || [])
-                .filter(col => relevantCollections.has(col.name))
-                .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-
-            if (relevantCollections.has('Без сборника') && !displayableCollections.some(c => c.name === 'Без сборника')) {
-                 displayableCollections.unshift({ name: 'Без сборника', url: '#' });
-            }
-            displayableCollections.unshift({ name: 'Все стихи', url: '#' }); // Добавляем "Все стихи"
-
-            if (displayableCollections.length > 1) {
-                const heading = document.createElement('h3');
-                heading.textContent = 'Сборники:';
-                collectionsListContainer.appendChild(heading);
-
-                const list = document.createElement('ul');
-                list.className = 'collections-list';
-
-                displayableCollections.forEach(collection => {
-                    const listItem = document.createElement('li');
-                    const link = document.createElement('button'); // Используем button
-                    link.textContent = collection.name || 'Без названия';
-                    link.className = 'collection-link';
-                    link.setAttribute('data-collection-name', collection.name);
-                    link.title = `Показать стихи из сборника "${collection.name}"`;
-                    link.onclick = (event) => {
-                        event.preventDefault();
-                        filterPoemsByCollection(collection.name);
-                        document.querySelectorAll('.collection-link.active').forEach(el => el.classList.remove('active'));
-                        link.classList.add('active');
-                    };
-                    if (collection.name === 'Все стихи') {
-                        link.classList.add('active'); // "Все стихи" активны по умолчанию
-                    }
-                    listItem.appendChild(link);
-                    list.appendChild(listItem);
-                });
-                collectionsListContainer.appendChild(list);
-            }
-        }
-
-        // --- Filter Poems by Collection ---
-        function filterPoemsByCollection(collectionName) {
-             if (!allAuthorData || !allAuthorData.poems) return;
-
-             if (collectionName === 'Все стихи') {
-                 poemsToDisplay = allAuthorData.poems;
-             } else if (collectionName === 'Без сборника') {
-                 poemsToDisplay = allAuthorData.poems.filter(poem => !poem.collection);
-             } else {
-                 poemsToDisplay = allAuthorData.poems.filter(poem => poem.collection === collectionName);
-             }
-             displayPoems(poemsToDisplay);
-        }
-
-
-        // --- Display Poems on Page ---
-        function displayPoems(poems) {
-            if (!poemsContainer) return;
-            poemsContainer.innerHTML = ''; // Clear previous poems
-
-            if (!poems || poems.length === 0) {
-                 poemsContainer.innerHTML = '<p class="status-message">Стихи в этом сборнике не найдены.</p>';
-                 return;
-            }
-
-            // --- IMPROVEMENT: Use DocumentFragment ---
             const fragment = document.createDocumentFragment();
 
-            poems.forEach((poem, index) => {
-                // --- IMPROVEMENT: Use <button> for poem card ---
+            pagePoems.forEach((poem, index) => {
                 const card = document.createElement('button');
-                card.className = 'poem-card frosted-glass'; // Классы стилизации
-                card.onclick = () => openModal(poem.id);
-                // role="button" и tabindex="0" не нужны для <button>
-                card.setAttribute('data-poem-id', poem.id);
-                // keydown для Enter/Space на button не обязателен, но оставим для единообразия
-                card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(poem.id); } });
-                card.style.transitionDelay = `${index * 0.08}s`;
+                card.className = 'poem-card frosted-glass';
+                card.onclick = () => openModal(poem);
+                card.style.transitionDelay = `${index * 0.05}s`;
 
-                // Логика отрывка остается прежней
-                const excerptText = poem.text || '';
-                const excerptLines = excerptText.split('\n').filter(line => line.trim() !== '');
-                const maxLines = 6, maxLength = 150;
-                let excerpt = excerptLines.slice(0, maxLines).join('\n');
-                let needsEllipsis = excerptLines.length > maxLines;
-                if (excerpt.length > maxLength) {
-                    excerpt = excerpt.substring(0, maxLength).trim();
-                    const lastSpaceIndex = excerpt.lastIndexOf(" ");
-                    if (lastSpaceIndex > 0) excerpt = excerpt.substring(0, lastSpaceIndex);
-                    needsEllipsis = true;
-                }
-                if (needsEllipsis && excerpt.length > 0) excerpt += '...';
-                else if (excerptText.length > maxLength && excerpt.length === 0) {
-                    excerpt = excerptText.substring(0, maxLength).trim();
-                    const lastSpaceIndex = excerpt.lastIndexOf(" ");
-                    if (lastSpaceIndex > 0) excerpt = excerpt.substring(0, lastSpaceIndex);
-                    excerpt += '...';
-                }
+                // Excerpt generation
+                let excerpt = (poem.text || '').split('\n').slice(0, 6).join('\n');
+                if (poem.text.length > excerpt.length) excerpt += '...';
 
-                const datePart = poem.created ? poem.created.split(' ')[0] : 'Неизвестно';
-                const likesHtml = typeof poem.rating === 'number' ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : '';
-
-                // Внутреннее содержимое кнопки
                 card.innerHTML = `
-                    <div><h3 class="poem-title">${poem.title || '***'}</h3><p class="poem-excerpt">${excerpt || '(Нет текста)'}</p></div>
-                    <div class="poem-meta"><span><i class="far fa-calendar-alt"></i> ${datePart}</span>${likesHtml}</div>`;
-
-                fragment.appendChild(card); // Добавляем во фрагмент
-
+                    <div>
+                        <h3 class="poem-title">${poem.title || '***'}</h3>
+                        <p class="poem-excerpt">${excerpt}</p>
+                    </div>
+                    <div class="poem-meta">
+                        <span><i class="far fa-calendar-alt"></i> ${poem.created ? poem.created.split(' ')[0] : ''}</span>
+                        ${poem.rating ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : ''}
+                    </div>
+                `;
+                fragment.appendChild(card);
                 // Trigger animation
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => card.classList.add('visible'));
-                });
+                setTimeout(() => card.classList.add('visible'), 50);
             });
 
-            poemsContainer.appendChild(fragment); // Добавляем все карточки разом
+            elems.poemsContainer.appendChild(fragment);
+            renderPagination(totalPages);
         }
 
-        // --- Mobile Menu Logic ---
-        function toggleMenu() {
-            const isActive = hamburger.classList.contains('active');
-            hamburger.setAttribute('aria-expanded', String(!isActive));
-            hamburger.classList.toggle('active', !isActive);
-            mobileMenu.classList.toggle('active', !isActive);
-            overlay.classList.toggle('active', !isActive);
-            document.body.classList.toggle('no-scroll', !isActive || modal.classList.contains('active')); // Учитываем и модалку
-        }
-        function closeMenu() {
-            if (hamburger.classList.contains('active')) {
-                hamburger.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-                mobileMenu.classList.remove('active');
-                overlay.classList.remove('active');
-                if (!modal.classList.contains('active')) { // Не разблокируем скролл, если модалка открыта
-                    document.body.classList.remove('no-scroll');
+        function renderPagination(totalPages) {
+            elems.paginationContainer.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const createBtn = (text, page, active, disabled) => {
+                const btn = document.createElement('button');
+                btn.className = `pagination-btn ${active ? 'active' : ''}`;
+                btn.textContent = text;
+                btn.disabled = disabled;
+                if (!disabled) {
+                    btn.onclick = () => {
+                        currentPage = page;
+                        updateUrl();
+                        renderPage(); // Just re-render, no need to fetch
+                        document.getElementById('poems').scrollIntoView({ behavior: 'smooth' });
+                    };
                 }
+                return btn;
+            };
+
+            // Prev
+            elems.paginationContainer.appendChild(createBtn('<', currentPage - 1, false, currentPage === 1));
+
+            // Numbers (simplified logic)
+            let start = Math.max(1, currentPage - 2);
+            let end = Math.min(totalPages, currentPage + 2);
+
+            if (start > 1) elems.paginationContainer.appendChild(createBtn('1', 1, false, false));
+            if (start > 2) elems.paginationContainer.appendChild(createBtn('...', null, false, true));
+
+            for (let i = start; i <= end; i++) {
+                elems.paginationContainer.appendChild(createBtn(i, i, i === currentPage, false));
             }
-        }
-        hamburger.addEventListener('click', toggleMenu);
-        overlay.addEventListener('click', closeMenu);
 
-        // --- Modal Logic ---
-        function findPoemById(id) {
-            return poemsToDisplay.find(p => p.id === id) || allAuthorData?.poems?.find(p => p.id === id);
-        }
+            if (end < totalPages - 1) elems.paginationContainer.appendChild(createBtn('...', null, false, true));
+            if (end < totalPages) elems.paginationContainer.appendChild(createBtn(totalPages, totalPages, false, false));
 
-        function openModal(poemId) {
-            const poem = findPoemById(poemId);
-            if (!poem) { console.error(`Poem with ID ${poemId} not found.`); return; }
-            currentPoemIdInModal = poemId;
-            if (!modal.classList.contains('active')) { previouslyFocusedElement = document.activeElement; }
-
-            hideRelatedContent(false); // Сбрасываем вид связанных стихов
-
-            modalTitle.textContent = poem.title || '***';
-            modalPoem.textContent = poem.text || 'Нет текста.';
-
-            const datePart = poem.created ? poem.created.split(' ')[0] : '';
-            const timePart = poem.created ? poem.created.split(' ')[1] || '' : '';
-            const rubricName = poem.rubric?.name || 'Без рубрики';
-            const collectionName = poem.collection || 'Без сборника';
-            const rubricHtml = `<a href="#" class="modal-meta-link" data-type="rubric" data-value="${rubricName}" title="Показать стихи из рубрики '${rubricName}'"><i class="fas fa-folder-open"></i> ${rubricName}</a>`;
-            const collectionHtml = `<a href="#" class="modal-meta-link" data-type="collection" data-value="${collectionName}" title="Показать стихи из сборника '${collectionName}'"><i class="fas fa-book"></i> ${collectionName}</a>`;
-            const likesHtml = typeof poem.rating === 'number' ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : '';
-            const authorName = allAuthorData?.username || 'Автор';
-            const authorHtml = `<span><i class="fas fa-user-edit"></i> ${authorName}</span>`;
-            const wordCount = poem.text ? poem.text.split(/\s+/).filter(Boolean).length : 0;
-            const readTime = Math.max(1, Math.ceil(wordCount / 200));
-            const readTimeHtml = `<span><i class="far fa-clock"></i> ~${readTime} мин</span>`;
-
-            modalMeta.innerHTML = `${authorHtml}<span><i class="far fa-calendar-alt"></i> ${datePart} ${timePart}</span>${readTimeHtml}${rubricHtml}${collectionHtml}${likesHtml}`;
-
-            modalContentWrapper.scrollTop = 0;
-            modal.classList.add('active');
-            document.body.classList.add('no-scroll'); // Блокируем скролл body
-            setTimeout(() => modalCloseButton.focus(), 400); // Фокус на кнопку закрытия
+            // Next
+            elems.paginationContainer.appendChild(createBtn('>', currentPage + 1, false, currentPage === totalPages));
         }
 
-        // Функция для открытия модалки сразу в режиме просмотра сборника/рубрики (если понадобится)
-        /*
-        function openModalForCollection(collectionName) {
-            if (!modal.classList.contains('active')) { previouslyFocusedElement = document.activeElement; }
-            currentPoemIdInModal = null;
-            modal.classList.add('active');
+        // Modal Logic
+        function openModal(poem) {
+            elems.modal.title.textContent = poem.title;
+            elems.modal.poem.textContent = poem.text;
+            
+            const rubric = poem.rubric?.name || 'Без рубрики';
+            const collection = poem.collection || 'Без сборника';
+
+            elems.modal.meta.innerHTML = `
+                <span><i class="far fa-calendar-alt"></i> ${poem.created || ''}</span>
+                <a href="#" onclick="filterBy('rubric', '${rubric}'); closeModal();"><i class="fas fa-folder-open"></i> ${rubric}</a>
+                <a href="#" onclick="filterBy('collection', '${collection}'); closeModal();"><i class="fas fa-book"></i> ${collection}</a>
+                ${poem.rating ? `<span class="likes"><i class="fas fa-heart"></i> ${poem.rating}</span>` : ''}
+            `;
+
+            elems.modal.related.style.display = 'none';
+            elems.modal.content.classList.remove('related-view-active');
+            elems.modal.el.classList.add('active');
             document.body.classList.add('no-scroll');
-            modalContentWrapper.scrollTop = 0;
-            showRelatedContent('collection', collectionName, 'mainList');
-            const backButton = modalRelatedContent.querySelector('.modal-back-button');
-            if (backButton) { setTimeout(() => backButton.focus(), 400); }
         }
-        */
 
         function closeModal() {
-            modal.classList.remove('active');
-            // Разблокируем скролл body только если и меню закрыто
-            if (!mobileMenu.classList.contains('active')) {
-                document.body.classList.remove('no-scroll');
-            }
-            if (previouslyFocusedElement) {
-                previouslyFocusedElement.focus();
-                previouslyFocusedElement = null;
-            }
-            currentPoemIdInModal = null;
-            hideRelatedContent(false); // Сбрасываем вид связанных стихов при закрытии
+            elems.modal.el.classList.remove('active');
+            document.body.classList.remove('no-scroll');
         }
 
-        function getUniqueValues(type) {
-            if (!allAuthorData || !allAuthorData.poems) return [];
-            const values = new Set();
-            const defaultValue = type === 'collection' ? 'Без сборника' : 'Без рубрики';
-            allAuthorData.poems.forEach(poem => {
-                let value = (type === 'rubric' ? poem.rubric?.name : poem.collection) || defaultValue;
-                values.add(value);
-            });
-            return Array.from(values).sort((a, b) => a.localeCompare(b, 'ru'));
-        }
+        window.filterBy = (type, val) => {
+            if (type === 'rubric') filters.rubric = val;
+            if (type === 'collection') filters.collection = val;
+            currentPage = 1;
+            updateUrl();
+            fetchData();
+        };
 
-        function showRelatedContent(type, value, origin = 'poemMeta') {
-            if (!allAuthorData || !allAuthorData.poems) return;
-            const defaultValue = type === 'collection' ? 'Без сборника' : 'Без рубрики';
-            const relatedPoems = allAuthorData.poems.filter(poem => {
-                let poemValue = (type === 'rubric' ? poem.rubric?.name : poem.collection) || defaultValue;
-                return poemValue === value;
-            });
-            const otherValues = getUniqueValues(type).filter(v => v !== value);
+        // Event Listeners
+        elems.filters.toggle.onclick = () => elems.filters.panel.classList.toggle('active');
+        
+        const onFilterChange = (key, val) => {
+            filters[key] = val;
+            currentPage = 1;
+            updateUrl();
+            fetchData();
+        };
 
-            const typeText = type === 'rubric' ? 'рубрики' : 'сборника';
-            const otherTypeTextPlural = type === 'rubric' ? 'рубрики' : 'сборники';
-            const otherTypeTextSingular = type === 'rubric' ? 'рубрику' : 'сборник';
-            const backButtonText = origin === 'mainList' ? 'Закрыть' : 'Назад к стихотворению'; // Упростим текст кнопки
-            const backButtonAction = origin === 'mainList' ? closeModal : () => hideRelatedContent(true);
+        elems.filters.sort.onchange = (e) => onFilterChange('sort', e.target.value);
+        elems.filters.rubric.onchange = (e) => onFilterChange('rubric', e.target.value);
+        elems.filters.year.onchange = (e) => onFilterChange('year', e.target.value);
+        elems.filters.perPage.onchange = (e) => {
+            itemsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            updateUrl();
+            renderPage(); // No fetch needed for page size change if data exists
+        };
 
-            let relatedHtml = `
-                <button class="modal-back-button" id="modalBackButton" aria-label="${backButtonText}">
-                    <i class="fas fa-arrow-left"></i> ${backButtonText}
-                </button>
-                <h3>Стихи из ${typeText}: ${value}</h3>
-            `;
-            if (relatedPoems.length > 0) {
-                relatedHtml += '<ul>';
-                relatedPoems.forEach(poem => {
-                    // Используем data-poem-id для идентификации
-                    relatedHtml += `<li><a href="#" class="modal-related-poem" data-poem-id="${poem.id}" title="Открыть '${poem.title || '***'}'"><i class="far fa-file-alt"></i> ${poem.title || '***'}</a></li>`;
-                });
-                relatedHtml += '</ul>';
-            } else { relatedHtml += `<p>Стихов в этой ${typeText} не найдено.</p>`; }
-            if (otherValues.length > 0) {
-                relatedHtml += `<h4>Другие ${otherTypeTextPlural}</h4><ul>`;
-                otherValues.forEach(otherVal => {
-                    relatedHtml += `<li><a href="#" class="modal-related-link" data-type="${type}" data-value="${otherVal}" title="Показать ${otherTypeTextSingular} '${otherVal}'">${otherVal}</a></li>`;
-                });
-                relatedHtml += '</ul>';
-            }
+        // Search debounce
+        let searchTimeout;
+        elems.filters.search.oninput = (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filters.q = e.target.value;
+                currentPage = 1;
+                updateUrl();
+                fetchData();
+            }, 600);
+        };
 
-            modalRelatedContent.innerHTML = relatedHtml;
-            modalContent.classList.add('related-view-active');
-            modalContentWrapper.scrollTop = 0;
-            const backButton = document.getElementById('modalBackButton');
-            if (backButton) {
-                // Удаляем старый обработчик, если он был
-                backButton.removeEventListener('click', closeModal);
-                backButton.removeEventListener('click', hideRelatedContent);
-                // Добавляем новый
-                backButton.addEventListener('click', backButtonAction);
-                setTimeout(() => backButton.focus(), 100); // Фокус на кнопку "Назад"
-            }
-        }
+        // Mobile Menu
+        elems.menu.btn.onclick = () => {
+            elems.menu.btn.classList.toggle('active');
+            elems.menu.el.classList.toggle('active');
+            elems.menu.overlay.classList.toggle('active');
+            document.body.classList.toggle('no-scroll');
+        };
+        window.closeMenu = () => {
+            elems.menu.btn.classList.remove('active');
+            elems.menu.el.classList.remove('active');
+            elems.menu.overlay.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+        };
+        elems.menu.overlay.onclick = closeMenu;
 
-        function hideRelatedContent(restoreFocusToClose = true) {
-            modalContent.classList.remove('related-view-active');
-            // Возвращаем фокус на кнопку закрытия модалки, если мы вернулись к стиху
-            if (restoreFocusToClose && currentPoemIdInModal !== null) {
-                 setTimeout(() => modalCloseButton.focus(), 100);
-            }
-        }
-
-        // --- Event Listeners ---
-        modalContent.addEventListener('click', function(e) {
-            const target = e.target.closest('a'); // Ищем ближайшую ссылку
-            if (!target) return;
-
-            if (target.classList.contains('modal-meta-link')) {
-                e.preventDefault();
-                const type = target.dataset.type;
-                const value = target.dataset.value;
-                if (type && value) showRelatedContent(type, value, 'poemMeta');
-            }
-            else if (target.classList.contains('modal-related-poem')) {
-                e.preventDefault();
-                const poemId = parseInt(target.dataset.poemId, 10);
-                if (!isNaN(poemId)) openModal(poemId); // Открываем стих по ID
-            }
-            else if (target.classList.contains('modal-related-link')) {
-                e.preventDefault();
-                const type = target.dataset.type;
-                const value = target.dataset.value;
-                // Определяем, откуда пришли в этот режим (из стиха или из главного списка)
-                const currentOrigin = modalContent.classList.contains('related-view-active') && currentPoemIdInModal === null ? 'mainList' : 'poemMeta';
-                if (type && value) showRelatedContent(type, value, currentOrigin);
-            }
-        });
-
-        // Закрытие модалки по клику на фон
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Закрытие модалки/возврат по Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modal.classList.contains('active')) {
-                if (modalContent.classList.contains('related-view-active')) {
-                    // Если мы в режиме связанных стихов
-                    const backButtonAction = document.getElementById('modalBackButton')?.onclick;
-                    if (typeof backButtonAction === 'function') {
-                         // Имитируем клик по кнопке "Назад"
-                         document.getElementById('modalBackButton').click();
-                    } else {
-                        // Если кнопки нет или что-то пошло не так, просто закрываем
-                        closeModal();
-                    }
-                } else {
-                    // Если мы в режиме просмотра стиха, закрываем модалку
-                    closeModal();
-                }
-            }
-        });
-
-        // Плавная прокрутка к якорям (упрощенная, т.к. offset делает CSS)
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const href = this.getAttribute('href');
-                // Игнорируем пустые ссылки, ссылки внутри модалки и кнопки фильтров
-                if (!href || href === '#' || href === '#!' || this.closest('.modal-content') || this.classList.contains('collection-link')) return;
-
-                let targetElement;
-                try {
-                    // Простая проверка селектора
-                    if (!/^#[a-zA-Z][\w:.-]*$/.test(href)) {
-                        console.warn(`Invalid selector for smooth scroll: ${href}`);
-                        return;
-                    }
-                    targetElement = document.querySelector(href);
-                } catch (err) {
-                    console.warn(`Invalid selector for smooth scroll: ${href}`, err);
-                    return;
-                }
-
-                if (targetElement) {
-                    e.preventDefault(); // Предотвращаем стандартный переход
-                    closeMenu(); // Закрываем мобильное меню, если открыто
-                    // Просто позволяем CSS scroll-behavior и scroll-padding-top сделать свою работу
-                    // window.scrollTo не нужен, если цель - просто перейти к якорю
-                    // Если нужно принудительно вызвать smooth scroll через JS:
-                    targetElement.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                    console.warn(`Target element not found for smooth scroll: ${href}`);
-                }
-            });
-        });
-
-        // --- Initialization ---
         document.getElementById('currentYear').textContent = new Date().getFullYear();
-        // Загружаем данные при загрузке страницы
-        document.addEventListener('DOMContentLoaded', () => fetchData(getAuthorIdentifier()));
-
-        // Переопределяем глобальную функцию fetchData для кнопки "Попробовать снова"
-        window.fetchData = fetchData;
-        window.getAuthorIdentifier = getAuthorIdentifier; // Делаем доступной глобально для inline onclick
 
     </script>
 </body>
 </html>
+
