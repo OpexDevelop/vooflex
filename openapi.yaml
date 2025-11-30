@@ -4,7 +4,7 @@ info:
   description: >
     Provides access to author data and poems from stihirus.ru with advanced caching (PostgreSQL),
     full-text search, filtering, and system monitoring.
-  version: 1.3.0
+  version: 1.6.1
 servers:
   - url: /
     description: Current server
@@ -145,6 +145,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/StihirusErrorResponse'
 
+  /poem/{id}:
+    get:
+      summary: Get Single Poem
+      description: Fetches full details for a specific poem by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusSinglePoemSuccessResponse'
+        '404':
+          description: Poem not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusErrorResponse'
+
+  /homepage/recommended:
+    get:
+      summary: Get Recommended Authors
+      description: Returns a list of authors from the "Recommended" section of the homepage.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusHomepageAuthorResponse'
+
+  /homepage/promo:
+    get:
+      summary: Get Promo Poems
+      description: Returns a list of poems from the "Promo" section.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusHomepagePoemResponse'
+
+  /homepage/weekly:
+    get:
+      summary: Get Weekly Rated Authors
+      description: Returns authors from the weekly rating section.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusHomepageAuthorResponse'
+
+  /homepage/active:
+    get:
+      summary: Get Active Authors
+      description: Returns currently active authors.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StihirusHomepageAuthorResponse'
+
   /stats:
     get:
       summary: System Statistics
@@ -157,7 +229,7 @@ paths:
               schema:
                 type: string
                 example: |
-                  --- NEON DB & API STATISTICS ---
+                  --- STATS ---
                   Requests (Total): 1542
                   Content: 50 authors, 12050 poems
 
@@ -216,6 +288,8 @@ components:
           type: integer
         reviewsReceived:
           type: integer
+        subscribers:
+          type: integer
       required: [poems, reviewsSent, reviewsReceived]
 
     StihirusPoem:
@@ -247,6 +321,26 @@ components:
           nullable: true
         hasCertificate:
           type: boolean
+        gifts:
+          type: array
+          items:
+            type: string
+        uniquenessStatus:
+          type: integer
+          description: "-1: checking, 0: not unique, 1: unique"
+        contest:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        holidaySection:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            title: { type: string }
+            url: { type: string }
       required: [id, title, text, created, rating]
 
     StihirusAuthorData:
@@ -258,6 +352,10 @@ components:
         canonicalUsername: { type: string }
         description: { type: string }
         avatarUrl: { type: string, nullable: true }
+        headerUrl: { type: string, nullable: true }
+        status: { type: string }
+        lastVisit: { type: string }
+        isPremium: { type: boolean }
         stats:
           $ref: '#/components/schemas/StihirusAuthorStats'
         collections:
@@ -278,6 +376,16 @@ components:
           enum: [success]
         data:
           $ref: '#/components/schemas/StihirusAuthorData'
+      required: [status, data]
+
+    StihirusSinglePoemSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: '#/components/schemas/StihirusPoem'
       required: [status, data]
 
     StihirusAuthorFiltersData:
@@ -310,3 +418,45 @@ components:
         data:
           $ref: '#/components/schemas/StihirusAuthorFiltersData'
       required: [status, data]
+
+    StihirusHomepageAuthor:
+      type: object
+      properties:
+        username: { type: string }
+        profileUrl: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        poemsCount: { type: integer }
+        rating: { type: integer }
+
+    StihirusHomepageAuthorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StihirusHomepageAuthor'
+
+    StihirusHomepagePoem:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        url: { type: string }
+        authorUsername: { type: string }
+        authorProfileUrl: { type: string }
+        rating: { type: integer }
+        commentsCount: { type: integer }
+
+    StihirusHomepagePoemResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StihirusHomepagePoem'

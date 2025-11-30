@@ -5,7 +5,15 @@ import YAML from 'yamljs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
-import { getAuthorData, getAuthorFilters } from 'stihirus-reader';
+import { 
+    getAuthorData, 
+    getAuthorFilters, 
+    getPoemById,
+    getRecommendedAuthors,
+    getPromoPoems,
+    getWeeklyRatedAuthors,
+    getActiveAuthors
+} from 'stihirus-reader';
 
 const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
@@ -126,12 +134,23 @@ async function savePageToDB(identifier, data) {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
+        // Merge extra author data into stats to avoid schema migration issues
+        // We store extended fields inside the 'stats' JSONB column
+        const extendedStats = {
+            ...data.stats,
+            headerUrl: data.headerUrl,
+            status: data.status,
+            lastVisit: data.lastVisit,
+            isPremium: data.isPremium
+        };
+
         await client.query(`
             INSERT INTO authors (identifier, username, real_name, profile_url, avatar_url, description, stats, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
             ON CONFLICT (identifier) DO UPDATE 
             SET username=EXCLUDED.username, stats=EXCLUDED.stats, updated_at=NOW();
-        `, [identifier, data.username, data.canonicalUsername, data.profileUrl, data.avatarUrl, data.description, JSON.stringify(data.stats)]);
+        `, [identifier, data.username, data.canonicalUsername, data.profileUrl, data.avatarUrl, data.description, JSON.stringify(extendedStats)]);
 
         if (data.poems && data.poems.length > 0) {
             for (const poem of data.poems) {
@@ -141,7 +160,12 @@ async function savePageToDB(identifier, data) {
                     commentsCount: poem.commentsCount,
                     imageUrl: poem.imageUrl,
                     hasCertificate: poem.hasCertificate,
-                    rubricUrl: poem.rubric?.url
+                    rubricUrl: poem.rubric?.url,
+                    // New v1.6.1 fields
+                    gifts: poem.gifts,
+                    uniquenessStatus: poem.uniquenessStatus,
+                    contest: poem.contest,
+                    holidaySection: poem.holidaySection
                 };
                 await client.query(`
                     INSERT INTO poems (id, author_identifier, title, text, created_str, rubric_name, metadata, fetched_at)
@@ -262,8 +286,17 @@ async function getFilteredPoemsFromDB(identifier, queryParams) {
             rating: row.metadata.rating,
             commentsCount: row.metadata.commentsCount,
             imageUrl: row.metadata.imageUrl,
-            hasCertificate: row.metadata.hasCertificate
+            hasCertificate: row.metadata.hasCertificate,
+            // New fields v1.6.1
+            gifts: row.metadata.gifts || [],
+            uniquenessStatus: row.metadata.uniquenessStatus,
+            contest: row.metadata.contest || null,
+            holidaySection: row.metadata.holidaySection || null
         }));
+
+        // Extract extended stats
+        const dbStats = author.stats || {};
+        const { headerUrl, status, lastVisit, isPremium, ...baseStats } = dbStats;
 
         return {
             status: 'success',
@@ -274,7 +307,11 @@ async function getFilteredPoemsFromDB(identifier, queryParams) {
                 profileUrl: author.profile_url,
                 avatarUrl: author.avatar_url,
                 description: author.description,
-                stats: author.stats,
+                headerUrl: headerUrl || null,
+                status: status || '',
+                lastVisit: lastVisit || '',
+                isPremium: !!isPremium,
+                stats: baseStats,
                 collections: [], // Populated on client or separately if needed
                 poems: poems
             }
@@ -288,7 +325,7 @@ async function getFilteredPoemsFromDB(identifier, queryParams) {
 
 // --- ROUTES ---
 
-// 1. STATIC HTML ROUTES (NEW)
+// 1. STATIC HTML ROUTES
 app.get('/', (req, res) => {
     const indexPath = path.join(process.cwd(), 'public', 'index.html');
     res.sendFile(indexPath);
@@ -339,7 +376,61 @@ app.get('/stats', async (req, res) => {
     } catch (e) { res.status(500).send("Stats Error"); }
 });
 
-// MAIN API ENDPOINT
+// --- NEW HOMEPAGE ROUTES (v1.6.1) ---
+
+app.get('/homepage/recommended', async (req, res) => {
+    try {
+        const result = await getRecommendedAuthors();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: { code: 500, message: e.message } });
+    }
+});
+
+app.get('/homepage/promo', async (req, res) => {
+    try {
+        const result = await getPromoPoems();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: { code: 500, message: e.message } });
+    }
+});
+
+app.get('/homepage/weekly', async (req, res) => {
+    try {
+        const result = await getWeeklyRatedAuthors();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: { code: 500, message: e.message } });
+    }
+});
+
+app.get('/homepage/active', async (req, res) => {
+    try {
+        const result = await getActiveAuthors();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: { code: 500, message: e.message } });
+    }
+});
+
+// --- POEM ROUTES ---
+
+// Get single poem by ID (New v1.6.1)
+app.get('/poem/:id', async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ status: 'error', error: { code: 400, message: 'Invalid ID' } });
+
+    try {
+        const result = await getPoemById(id);
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: { code: 500, message: e.message } });
+    }
+});
+
+// --- AUTHOR ROUTES ---
+
 app.get('/author/:identifier', async (req, res) => {
     const identifier = req.params.identifier;
     let page = req.query.page;
@@ -411,5 +502,3 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 }
 
 export default app;
-
-
