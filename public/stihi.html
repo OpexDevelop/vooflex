@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Стихи | Загрузка...</title>
+    <title>Орех Орехов | Стихи</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=fallback" rel="stylesheet">
@@ -1253,19 +1253,6 @@
                     updateAuthorUI(json.data);
                     renderCollections(json.data); 
                     renderPage();
-
-                    // --- [NEW] ЗАПУСК СИНХРОНИЗАЦИИ В ФОНЕ ---
-                    // Если это первая страница и нет активного поиска/фильтров,
-                    // браузер отправляет "тихий" запрос серверу, чтобы подтянуть старые стихи.
-                    if (currentPage === 1 && !filters.q && filters.rubric === 'all' && filters.year === 'all' && filters.collection === 'all') {
-                        console.log('Initiating background sync...');
-                        fetch(`${API_BASE_URL}/author/${getAuthorId()}/sync?delay=500`)
-                            .then(r => r.json())
-                            .then(d => console.log('Sync Report:', d))
-                            .catch(e => console.error('Sync failed:', e));
-                    }
-                    // ---------------------------------------------
-
                 } else {
                     throw new Error(json.error?.message || 'Ошибка API');
                 }
@@ -1340,6 +1327,7 @@
             const totalPoems = allAuthorData.stats?.poems || currentPoems.length;
             const totalPages = Math.ceil(totalPoems / itemsPerPage);
             
+            // Больше не делаем slice, так как сервер возвращает уже нужную страницу
             const pagePoems = currentPoems;
 
             const fragment = document.createDocumentFragment();
@@ -1491,3 +1479,5 @@
     </script>
 </body>
 </html>
+
+
