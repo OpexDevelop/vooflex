@@ -16,7 +16,7 @@ const port = process.env.PORT || 30010;
 
 app.use(cors());
 
-// --- DATABASE CONFIGURATION ---
+// --- DB SETUP ---
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL, 
     ssl: { rejectUnauthorized: false }, 
@@ -24,434 +24,227 @@ const pool = new Pool({
     idleTimeoutMillis: 30000
 });
 
-// --- INIT DB ---
 async function initDB() {
     const client = await pool.connect();
     try {
         await client.query(`
             CREATE TABLE IF NOT EXISTS request_logs (
                 id SERIAL PRIMARY KEY,
-                method VARCHAR(10),
-                path TEXT,
-                status INTEGER,
-                duration_ms INTEGER,
-                ip VARCHAR(50),
-                user_agent TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                method VARCHAR(10), path TEXT, status INTEGER, duration_ms INTEGER,
+                ip VARCHAR(50), user_agent TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
             );
         `);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_logs_created ON request_logs(created_at);`);
-
         await client.query(`
             CREATE TABLE IF NOT EXISTS authors (
                 id SERIAL PRIMARY KEY,
                 identifier VARCHAR(255) UNIQUE NOT NULL,
-                username VARCHAR(255),
-                real_name VARCHAR(255),
-                profile_url TEXT,
-                avatar_url TEXT,
-                description TEXT,
-                stats JSONB, 
-                updated_at TIMESTAMPTZ DEFAULT NOW()
+                username VARCHAR(255), real_name VARCHAR(255), profile_url TEXT,
+                avatar_url TEXT, description TEXT, stats JSONB, updated_at TIMESTAMPTZ DEFAULT NOW()
             );
         `);
-
         await client.query(`
             CREATE TABLE IF NOT EXISTS poems (
                 id BIGINT PRIMARY KEY,
                 author_identifier VARCHAR(255) REFERENCES authors(identifier) ON DELETE CASCADE,
-                title TEXT,
-                text TEXT,
-                created_str VARCHAR(50), 
-                rubric_name TEXT,
-                metadata JSONB, 
-                fetched_at TIMESTAMPTZ DEFAULT NOW()
+                title TEXT, text TEXT, created_str VARCHAR(50), rubric_name TEXT,
+                metadata JSONB, fetched_at TIMESTAMPTZ DEFAULT NOW()
             );
         `);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_poems_author ON poems(author_identifier);`);
-        
-        console.log("DB Schema & Logs initialized.");
-    } catch (err) {
-        console.error("DB Init Error:", err);
-    } finally {
-        client.release();
-    }
+    } catch (err) { console.error("DB Init Error:", err); } 
+    finally { client.release(); }
 }
 initDB();
 
-// --- LOGGER ---
 app.use(async (req, res, next) => {
     const start = Date.now();
     const originalEnd = res.end;
     res.end = function (...args) {
         const duration = Date.now() - start;
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        pool.query(`
-            INSERT INTO request_logs (method, path, status, duration_ms, ip, user_agent)
-            VALUES ($1, $2, $3, $4, $5, $6)
-        `, [req.method, req.originalUrl, res.statusCode, duration, ip, req.headers['user-agent']])
-        .catch(err => console.error("Log fail:", err));
+        pool.query(`INSERT INTO request_logs (method, path, status, duration_ms, ip, user_agent) VALUES ($1, $2, $3, $4, $5, $6)`, 
+            [req.method, req.originalUrl, res.statusCode, duration, req.headers['x-forwarded-for'], req.headers['user-agent']]).catch(()=>{});
         originalEnd.apply(res, args);
     };
     next();
 });
 
-// --- SWAGGER SETUP ---
-let swaggerDocument;
-try {
-    swaggerDocument = YAML.load(path.join(process.cwd(), 'openapi.yaml'));
-} catch (e) {
-    try {
-        swaggerDocument = YAML.load(path.join(__dirname, 'openapi.yaml'));
-    } catch (e2) {
-        console.error("Swagger YAML not found:", e2);
-    }
-}
-
-if (swaggerDocument) {
-    const swaggerOptions = {
-        customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css',
-        customJs: [
-            'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js'
-        ],
-        customSiteTitle: "StihiRus API Docs"
-    };
-    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, swaggerOptions));
-}
-
 // --- HELPERS ---
-
-// Трекер активных синхронизаций, чтобы не запускать дубликаты
-const activeSyncs = new Set();
 
 async function savePageToDB(identifier, data) {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        // Save Author Info
         await client.query(`
             INSERT INTO authors (identifier, username, real_name, profile_url, avatar_url, description, stats, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-            ON CONFLICT (identifier) DO UPDATE 
-            SET username=EXCLUDED.username, stats=EXCLUDED.stats, updated_at=NOW();
+            ON CONFLICT (identifier) DO UPDATE SET username=EXCLUDED.username, stats=EXCLUDED.stats, updated_at=NOW();
         `, [identifier, data.username, data.canonicalUsername, data.profileUrl, data.avatarUrl, data.description, JSON.stringify(data.stats)]);
 
-        // Save Poems
-        if (data.poems && data.poems.length > 0) {
+        if (data.poems?.length) {
             for (const poem of data.poems) {
                 const meta = {
-                    collection: poem.collection,
-                    rating: poem.rating,
-                    commentsCount: poem.commentsCount,
-                    imageUrl: poem.imageUrl,
-                    hasCertificate: poem.hasCertificate,
-                    rubricUrl: poem.rubric?.url
+                    collection: poem.collection, rating: poem.rating, commentsCount: poem.commentsCount,
+                    imageUrl: poem.imageUrl, hasCertificate: poem.hasCertificate, rubricUrl: poem.rubric?.url
                 };
                 await client.query(`
                     INSERT INTO poems (id, author_identifier, title, text, created_str, rubric_name, metadata, fetched_at)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-                    ON CONFLICT (id) DO UPDATE
-                    SET title=EXCLUDED.title, text=EXCLUDED.text, metadata=EXCLUDED.metadata, fetched_at=NOW();
+                    ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title, text=EXCLUDED.text, metadata=EXCLUDED.metadata;
                 `, [poem.id, identifier, poem.title, poem.text, poem.created, poem.rubric?.name, JSON.stringify(meta)]);
             }
         }
         await client.query('COMMIT');
-    } catch (e) {
-        await client.query('ROLLBACK');
-        console.error(`[${identifier}] Save Error:`, e.message);
-    } finally {
-        client.release();
-    }
+    } catch (e) { await client.query('ROLLBACK'); console.error(e); } 
+    finally { client.release(); }
 }
 
 async function checkExistingIds(ids) {
-    if (ids.length === 0) return [];
-    const query = `SELECT id FROM poems WHERE id = ANY($1::bigint[])`;
-    const res = await pool.query(query, [ids]);
+    if (!ids.length) return [];
+    const res = await pool.query(`SELECT id FROM poems WHERE id = ANY($1::bigint[])`, [ids]);
     return res.rows.map(r => parseInt(r.id));
 }
 
-/**
- * ФОНОВАЯ ЗАДАЧА СИНХРОНИЗАЦИИ
- * Работает отдельно от ответа пользователю.
- */
-async function runBackgroundSync(identifier, delayMs) {
-    if (activeSyncs.has(identifier)) {
-        console.log(`[${identifier}] Sync already running in background.`);
-        return;
-    }
+// --- CORE ROUTES ---
 
-    activeSyncs.add(identifier);
-    console.log(`[${identifier}] Starting Background Smart Sync...`);
-
-    try {
-        let currentPage = 1;
-        let keepFetching = true;
-
-        while (keepFetching) {
-            // Качаем страницу
-            const res = await getAuthorData(identifier, currentPage, delayMs);
-            
-            if (res.status !== 'success' || !res.data.poems || res.data.poems.length === 0) {
-                console.log(`[${identifier}] Sync reached end or error at page ${currentPage}.`);
-                break;
-            }
-
-            // Сохраняем
-            await savePageToDB(identifier, res.data);
-
-            // Проверяем, есть ли эти стихи уже в базе (Smart Sync logic)
-            const fetchedIds = res.data.poems.map(p => p.id);
-            const existingIds = await checkExistingIds(fetchedIds);
-
-            // Если ВСЕ стихи на этой странице уже были в базе, значит дальше старое
-            if (existingIds.length === fetchedIds.length && currentPage > 1) {
-                console.log(`[${identifier}] All poems on page ${currentPage} exist. Sync complete.`);
-                keepFetching = false;
-            } else {
-                // Иначе продолжаем качать следующую страницу
-                console.log(`[${identifier}] Page ${currentPage} synced. Moving to next...`);
-                currentPage++;
-                
-                // Пауза перед следующим запросом, чтобы не забанили
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-            }
-
-            // SAFETY BREAK (чтобы не уйти в бесконечный цикл при ошибках)
-            if (currentPage > 100) keepFetching = false; 
-        }
-
-    } catch (err) {
-        console.error(`[${identifier}] Background Sync Failed:`, err.message);
-    } finally {
-        activeSyncs.delete(identifier);
-    }
-}
-
-// --- DB QUERY HELPERS ---
-async function getFilteredPoemsFromDB(identifier, queryParams) {
-    const client = await pool.connect();
-    try {
-        let sql = `SELECT * FROM poems WHERE author_identifier = $1`;
-        let values = [identifier];
-        let paramIndex = 2;
-
-        const { q, searchFields, sort, year, rubric, collection } = queryParams;
-
-        // Filters
-        if (rubric && rubric !== 'all') {
-            sql += ` AND rubric_name = $${paramIndex}`;
-            values.push(rubric);
-            paramIndex++;
-        }
-        if (collection && collection !== 'all') {
-            if (collection === 'Без сборника') {
-                sql += ` AND (metadata->>'collection' IS NULL OR metadata->>'collection' = 'null')`;
-            } else {
-                sql += ` AND metadata->>'collection' = $${paramIndex}`;
-                values.push(collection);
-                paramIndex++;
-            }
-        }
-        if (year && year !== 'all') {
-            sql += ` AND created_str LIKE $${paramIndex}`;
-            values.push(`%${year}%`);
-            paramIndex++;
-        }
-
-        // Search
-        if (q) {
-            const fieldsToCheck = searchFields ? searchFields.split(',') : ['title', 'text'];
-            const searchConditions = [];
-            fieldsToCheck.forEach(field => {
-                const f = field.trim();
-                if (f === 'title') searchConditions.push(`title ILIKE $${paramIndex}`);
-                if (f === 'text') searchConditions.push(`text ILIKE $${paramIndex}`);
-                if (f === 'rubric') searchConditions.push(`rubric_name ILIKE $${paramIndex}`);
-            });
-            if (searchConditions.length > 0) {
-                sql += ` AND (${searchConditions.join(' OR ')})`;
-                values.push(`%${q}%`);
-                paramIndex++;
-            }
-        }
-
-        // Sorting
-        let orderBy = `ORDER BY id DESC`; 
-        if (sort) {
-            switch (sort) {
-                case 'date_asc': orderBy = `ORDER BY id ASC`; break;
-                case 'date_desc': orderBy = `ORDER BY id DESC`; break;
-                case 'popular':
-                case 'rating_desc': orderBy = `ORDER BY COALESCE((metadata->>'rating')::int, 0) DESC, id DESC`; break;
-                case 'rating_asc': orderBy = `ORDER BY COALESCE((metadata->>'rating')::int, 0) ASC, id DESC`; break;
-                case 'title_asc': orderBy = `ORDER BY title ASC`; break;
-                case 'title_desc': orderBy = `ORDER BY title DESC`; break;
-                default: orderBy = `ORDER BY id DESC`;
-            }
-        }
-
-        sql += ` ${orderBy}`;
-
-        // Pagination for DB query (simulated)
-        // Note: For large DBs, use OFFSET/LIMIT in SQL. 
-        // Here we fetch filtered list and let frontend handle basic pagination or return full list if needed
-        // but to prevent memory boom on big authors, let's limit simply:
-        sql += ` LIMIT 1000`; 
-
-        const res = await client.query(sql, values);
-        
-        const authorRes = await client.query(`SELECT * FROM authors WHERE identifier = $1`, [identifier]);
-        if (authorRes.rows.length === 0) return null;
-        const author = authorRes.rows[0];
-
-        const poems = res.rows.map(row => ({
-            id: parseInt(row.id),
-            title: row.title,
-            text: row.text,
-            created: row.created_str,
-            rubric: { name: row.rubric_name, url: row.metadata.rubricUrl },
-            collection: row.metadata.collection,
-            rating: row.metadata.rating,
-            commentsCount: row.metadata.commentsCount,
-            imageUrl: row.metadata.imageUrl,
-            hasCertificate: row.metadata.hasCertificate
-        }));
-
-        return {
-            status: 'success',
-            data: {
-                authorId: 0,
-                username: author.username,
-                canonicalUsername: author.username,
-                profileUrl: author.profile_url,
-                avatarUrl: author.avatar_url,
-                description: author.description,
-                stats: author.stats,
-                collections: [], 
-                poems: poems
-            }
-        };
-
-    } finally {
-        client.release();
-    }
-}
-
-
-// --- ROUTES ---
-
-// Static
-app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'public', 'index.html')));
-app.get('/stihi', (req, res) => res.sendFile(path.join(process.cwd(), 'public', 'stihi.html')));
-app.get('/robots.txt', (req, res) => {
-    res.type('text/plain').send(`User-agent: *\nAllow: /$\nAllow: /stihi\nAllow: /docs\nDisallow: /`);
-});
-
-// Logs
-app.get('/logs', async (req, res) => {
-    try {
-        const result = await pool.query(`SELECT * FROM request_logs ORDER BY id DESC LIMIT 500`);
-        res.type('text/plain');
-        let output = "--- SERVER LOGS ---\n";
-        result.rows.forEach(row => {
-            const date = new Date(row.created_at).toISOString();
-            output += `[${date}] [${row.method}] [${row.status}] [${row.duration_ms}ms] ${row.path}\n`;
-        });
-        res.send(output);
-    } catch (e) { res.status(500).send("Log Error"); }
-});
-
-// Stats
-app.get('/stats', async (req, res) => {
-    try {
-        const client = await pool.connect();
-        const count = async (t) => (await client.query(`SELECT COUNT(*) FROM ${t}`)).rows[0].count;
-        const [totalReq, authors, poems] = await Promise.all([
-            count('request_logs'), count('authors'), count('poems')
-        ]);
-        client.release();
-        res.type('text/plain').send(`Requests: ${totalReq}\nAuthors: ${authors}\nPoems: ${poems}`);
-    } catch (e) { res.status(500).send("Stats Error"); }
-});
-
-
-// === MAIN API ENDPOINT (REWRITTEN) ===
+// 1. MAIN FETCH ROUTE (Мгновенный ответ)
 app.get('/author/:identifier', async (req, res) => {
     const identifier = req.params.identifier;
     let page = parseInt(req.query.page) || 1;
-    let delayMs = req.query.delay ? parseInt(req.query.delay) : 500;
+    let delayMs = parseInt(req.query.delay) || 500;
     
-    // Флаг: есть ли фильтры? (Если да - нам нужна БД, а не просто страница с источника)
+    // Если есть фильтры - всегда берем из БД, но сначала обновляем "голову" (стр 1)
     const hasFilters = req.query.q || (req.query.rubric && req.query.rubric !== 'all') || 
-                       (req.query.year && req.query.year !== 'all') || 
-                       (req.query.collection && req.query.collection !== 'all') ||
-                       (req.query.sort && req.query.sort !== 'date_desc');
+                       (req.query.year && req.query.year !== 'all') || (req.query.collection && req.query.collection !== 'all');
 
     try {
-        // 1. Сначала скачиваем запрошенную страницу с источника (для свежести)
-        //    Если запрошены фильтры, мы все равно качаем page=1 для обновления "головы" списка
+        // Качаем запрошенную страницу (или первую, если фильтры) для свежести
         const fetchPage = hasFilters ? 1 : page;
         const freshData = await getAuthorData(identifier, fetchPage, delayMs);
 
         if (freshData.status === 'success') {
-            // 2. Сохраняем свежие данные в БД
             await savePageToDB(identifier, freshData.data);
-            
-            // 3. ЗАПУСКАЕМ ФОНОВУЮ СИНХРОНИЗАЦИЮ (Background Task)
-            //    Не ждем (await), просто запускаем.
-            runBackgroundSync(identifier, delayMs);
-        } else {
-            console.error(`[${identifier}] Failed to fetch page ${fetchPage}`);
+            // ПРИМЕЧАНИЕ: Мы НЕ запускаем тут runBackgroundSync, так как Vercel убьет его.
+            // Синхронизация запускается отдельным запросом от клиента.
         }
 
-        // 4. Формируем ответ пользователю
-        
         if (hasFilters) {
-            // ВАРИАНТ А: Пользователь что-то ищет или фильтрует.
-            // Источник (Stihi.ru) не умеет фильтровать по JSON API, поэтому берем из нашей БД.
             const dbResponse = await getFilteredPoemsFromDB(identifier, req.query);
-            if (dbResponse) {
-                return res.json(dbResponse);
-            } else {
-                // Если в БД еще пусто, но данные скачались - отдаем свежие
-                return res.json(freshData);
-            }
+            return res.json(dbResponse || freshData);
         } else {
-            // ВАРИАНТ Б: Обычный просмотр страниц.
-            // Отдаем то, что только что скачали. Это максимально быстро и свежо.
-            // Если была ошибка скачивания (freshData.status !== success), пробуем отдать из БД.
-            
-            if (freshData.status === 'success') {
-                return res.json(freshData);
-            } else {
-                // Если источник лежит, пробуем отдать из кэша БД
-                const dbBackup = await getFilteredPoemsFromDB(identifier, req.query);
-                if (dbBackup) return res.json(dbBackup);
-                
-                return res.status(500).json(freshData);
-            }
+            if (freshData.status === 'success') return res.json(freshData);
+            const dbBackup = await getFilteredPoemsFromDB(identifier, req.query);
+            return dbBackup ? res.json(dbBackup) : res.status(500).json(freshData);
         }
-
     } catch (err) {
-        console.error("Route Error:", err);
         return res.status(500).json({ status: 'error', error: { code: 500, message: err.message } });
     }
 });
 
-app.get('/author/:identifier/filters', async (req, res) => {
+// 2. BACKGROUND SYNC ROUTE (Дергается клиентом)
+// Этот маршрут "висит", пока идет синхронизация, чтобы Vercel не убил процесс.
+const activeSyncs = new Set();
+
+app.get('/author/:identifier/sync', async (req, res) => {
+    const identifier = req.params.identifier;
+    const delayMs = parseInt(req.query.delay) || 500;
+
+    if (activeSyncs.has(identifier)) {
+        return res.json({ status: 'skipped', message: 'Sync already running' });
+    }
+    activeSyncs.add(identifier);
+
     try {
-        const result = await getAuthorFilters(req.params.identifier);
-        res.json(result);
+        // Начинаем со 2-й страницы, т.к. 1-ю обычно качает основной запрос
+        // Но для надежности проверяем с 1-й, если база пустая
+        let currentPage = 1; 
+        let syncedPages = 0;
+        let keepFetching = true;
+
+        console.log(`[${identifier}] Sync started...`);
+
+        while (keepFetching) {
+            // Лимит Vercel Free (10 сек) или Pro (60 сек). 
+            // Ставим защиту, чтобы не отвалилось по тайм-ауту с ошибкой.
+            if (syncedPages > 15) break; 
+
+            const data = await getAuthorData(identifier, currentPage, delayMs);
+            if (data.status !== 'success' || !data.data.poems?.length) break;
+
+            const fetchedIds = data.data.poems.map(p => p.id);
+            const existingIds = await checkExistingIds(fetchedIds);
+
+            // Если это не 1 страница и ВСЕ стихи уже есть - стоп.
+            if (currentPage > 1 && existingIds.length === fetchedIds.length) {
+                keepFetching = false;
+            } else {
+                // Если есть новые - сохраняем
+                if (existingIds.length !== fetchedIds.length) {
+                    await savePageToDB(identifier, data.data);
+                    syncedPages++;
+                }
+                currentPage++;
+                await new Promise(r => setTimeout(r, delayMs));
+            }
+        }
+        
+        return res.json({ status: 'success', pagesSynced: syncedPages });
+
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(e);
+        return res.status(500).json({ status: 'error', message: e.message });
+    } finally {
+        activeSyncs.delete(identifier);
     }
 });
 
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    app.listen(port, () => console.log(`Server listening on port: ${port}`));
+// --- DB QUERY HELPERS ---
+async function getFilteredPoemsFromDB(identifier, q) {
+    const client = await pool.connect();
+    try {
+        let sql = `SELECT * FROM poems WHERE author_identifier = $1`;
+        let vals = [identifier], idx = 2;
+
+        if (q.rubric && q.rubric !== 'all') { sql += ` AND rubric_name = $${idx++}`; vals.push(q.rubric); }
+        if (q.year && q.year !== 'all') { sql += ` AND created_str LIKE $${idx++}`; vals.push(`%${q.year}%`); }
+        if (q.collection && q.collection !== 'all') {
+             if (q.collection === 'Без сборника') sql += ` AND (metadata->>'collection' IS NULL OR metadata->>'collection' = 'null')`;
+             else { sql += ` AND metadata->>'collection' = $${idx++}`; vals.push(q.collection); }
+        }
+        if (q.q) {
+            sql += ` AND (title ILIKE $${idx} OR text ILIKE $${idx} OR rubric_name ILIKE $${idx})`;
+            vals.push(`%${q.q}%`); idx++;
+        }
+
+        let orderBy = 'ORDER BY id DESC';
+        if (q.sort === 'date_asc') orderBy = 'ORDER BY id ASC';
+        if (q.sort === 'popular') orderBy = 'ORDER BY COALESCE((metadata->>'rating')::int, 0) DESC';
+        
+        sql += ` ${orderBy} LIMIT 1000`;
+        
+        const rows = (await client.query(sql, vals)).rows;
+        const author = (await client.query(`SELECT * FROM authors WHERE identifier=$1`, [identifier])).rows[0];
+        if (!author) return null;
+
+        return {
+            status: 'success',
+            data: {
+                username: author.username, profileUrl: author.profile_url, avatarUrl: author.avatar_url,
+                description: author.description, stats: author.stats, poems: rows.map(row => ({
+                    id: parseInt(row.id), title: row.title, text: row.text, created: row.created_str,
+                    rubric: { name: row.rubric_name }, collection: row.metadata.collection, rating: row.metadata.rating
+                }))
+            }
+        };
+    } finally { client.release(); }
 }
+
+// --- STATIC & MISC ---
+app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'public', 'index.html')));
+app.get('/stihi', (req, res) => res.sendFile(path.join(process.cwd(), 'public', 'stihi.html')));
+app.get('/author/:identifier/filters', async (req, res) => res.json(await getAuthorFilters(req.params.identifier)));
+app.get('/stats', async (req, res) => {
+    const c = await pool.query('SELECT COUNT(*) as a FROM authors');
+    res.send(`Authors: ${c.rows[0].a}`);
+});
 
 export default app;
 
