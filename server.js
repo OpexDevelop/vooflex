@@ -506,4 +506,31 @@ app.get('/author/:identifier', async (req, res) => {
                     activeSyncs.set(identifier, syncPromise);
                     syncPromise.finally(() => {
                         console.log(`[BG] Sync finished for ${identifier}`);
-                        activeSyncs.delete(identifier)
+                        activeSyncs.delete(identifier);
+                    });
+                }
+            } else {
+                return res.status(freshData.error?.code || 500).json(freshData);
+            }
+        }
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ status: 'error', error: { code: 500, message: err.message } });
+    }
+});
+
+app.get('/author/:identifier/filters', async (req, res) => {
+    try {
+        const result = await getAuthorFilters(req.params.identifier);
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(port, () => console.log(`Server listening on port: ${port}`));
+}
+
+export default app;
