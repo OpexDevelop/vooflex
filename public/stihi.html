@@ -1108,7 +1108,6 @@
         const API_BASE_URL = 'https://vooflex.vercel.app';
         const DEFAULT_AUTHOR = 'oreh-orehov';
 
-        // State Management
         let currentPoems = [];
         let allAuthorData = null;
         let currentPage = 1;
@@ -1121,7 +1120,6 @@
             collection: 'all'
         };
 
-        // DOM Elements
         const elems = {
             poemsContainer: document.getElementById('poemsContainer'),
             collectionsContainer: document.getElementById('collectionsListContainer'),
@@ -1159,20 +1157,17 @@
             }
         };
 
-        // Init
         document.addEventListener('DOMContentLoaded', () => {
             initUrlParams();
             loadFilters();
             fetchData();
         });
 
-        // Get Author ID from URL or default
         function getAuthorId() {
             const params = new URLSearchParams(window.location.search);
             return params.get('author') || DEFAULT_AUTHOR;
         }
 
-        // Initialize state from URL params
         function initUrlParams() {
             const params = new URLSearchParams(window.location.search);
             if (params.has('q')) filters.q = params.get('q');
@@ -1183,14 +1178,11 @@
             if (params.has('page')) currentPage = parseInt(params.get('page')) || 1;
             if (params.has('perPage')) itemsPerPage = parseInt(params.get('perPage')) || 50;
 
-            // Update UI inputs
             elems.filters.search.value = filters.q;
             elems.filters.sort.value = filters.sort;
             elems.filters.perPage.value = itemsPerPage;
-            // Rubric/Year are set after filter fetch
         }
 
-        // Sync URL with current state
         function updateUrl() {
             const params = new URLSearchParams(window.location.search);
             
@@ -1208,7 +1200,6 @@
             window.history.pushState({}, '', newUrl);
         }
 
-        // Load Filter Options (Rubrics/Years)
         async function loadFilters() {
             try {
                 const res = await fetch(`${API_BASE_URL}/author/${getAuthorId()}/filters`);
@@ -1218,17 +1209,16 @@
                     populateSelect(elems.filters.year, json.data.dates.map(d => d.year), filters.year);
                 }
             } catch (e) {
-                console.error("Filter load error", e);
+                console.error(e);
             }
         }
 
         function populateSelect(select, items, selectedValue) {
-            // Keep first option (All)
             const first = select.options[0];
             select.innerHTML = '';
             select.appendChild(first);
             
-            const unique = [...new Set(items)].sort((a,b) => b - a); // Sort years desc, rubrics usually strings
+            const unique = [...new Set(items)].sort((a,b) => b - a); 
             if (typeof unique[0] === 'string') unique.sort();
 
             unique.forEach(val => {
@@ -1240,11 +1230,14 @@
             select.value = selectedValue;
         }
 
-        // MAIN FETCH FUNCTION
         async function fetchData() {
             elems.poemsContainer.innerHTML = '<p class="status-message loading"><i class="fas fa-spinner fa-spin"></i> Загрузка стихов...</p>';
             
             const params = new URLSearchParams();
+            
+            params.append('page', currentPage);
+            
+            params.append('perPage', itemsPerPage);
             if (filters.q) params.append('q', filters.q);
             if (filters.sort) params.append('sort', filters.sort);
             if (filters.rubric !== 'all') params.append('rubric', filters.rubric);
@@ -1252,9 +1245,6 @@
             if (filters.collection !== 'all') params.append('collection', filters.collection);
             
             try {
-                // We ask the API for data based on filters.
-                // The API returns the matching dataset. 
-                // We handle pagination UI client-side for the received set (since server returns all matches)
                 const url = `${API_BASE_URL}/author/${getAuthorId()}?${params.toString()}`;
                 const response = await fetch(url);
                 const json = await response.json();
@@ -1263,18 +1253,17 @@
                     allAuthorData = json.data;
                     currentPoems = json.data.poems || [];
                     updateAuthorUI(json.data);
-                    renderCollections(json.data); // Update collections list
+                    renderCollections(json.data); 
                     renderPage();
                 } else {
                     throw new Error(json.error?.message || 'Ошибка API');
                 }
             } catch (err) {
                 elems.poemsContainer.innerHTML = `<p class="status-message error">Ошибка: ${err.message}</p>`;
-                document.getElementById('about').style.display = 'none'; // Hide if failed completely
+                document.getElementById('about').style.display = 'none';
             }
         }
 
-        // Render functions
         function updateAuthorUI(data) {
             document.title = `${data.username} | Стихи`;
             elems.authorLogo.textContent = data.username;
@@ -1292,7 +1281,6 @@
         function renderCollections(data) {
             elems.collectionsContainer.innerHTML = '';
             
-            // Build unique list from actual poems + metadata collections list
             const poemCollections = new Set(data.poems.map(p => p.collection).filter(c => c));
             const metaCollections = (data.collections || []).map(c => c.name);
             const allCols = [...new Set([...poemCollections, ...metaCollections])].sort();
@@ -1306,7 +1294,6 @@
             const ul = document.createElement('ul');
             ul.className = 'collections-list';
             
-            // "All" button
             const createLi = (name, val) => {
                 const li = document.createElement('li');
                 const btn = document.createElement('button');
@@ -1338,13 +1325,12 @@
                 return;
             }
 
-            // Client-side pagination logic
-            const totalPages = Math.ceil(currentPoems.length / itemsPerPage);
-            if (currentPage > totalPages) currentPage = 1;
+            // Используем общее количество из статистики для расчета страниц
+            const totalPoems = allAuthorData.stats?.poems || currentPoems.length;
+            const totalPages = Math.ceil(totalPoems / itemsPerPage);
             
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const pagePoems = currentPoems.slice(start, end);
+            // Больше не делаем slice, так как сервер возвращает уже нужную страницу
+            const pagePoems = currentPoems;
 
             const fragment = document.createDocumentFragment();
 
@@ -1354,7 +1340,6 @@
                 card.onclick = () => openModal(poem);
                 card.style.transitionDelay = `${index * 0.05}s`;
 
-                // Excerpt generation
                 let excerpt = (poem.text || '').split('\n').slice(0, 6).join('\n');
                 if (poem.text.length > excerpt.length) excerpt += '...';
 
@@ -1369,7 +1354,6 @@
                     </div>
                 `;
                 fragment.appendChild(card);
-                // Trigger animation
                 setTimeout(() => card.classList.add('visible'), 50);
             });
 
@@ -1390,17 +1374,15 @@
                     btn.onclick = () => {
                         currentPage = page;
                         updateUrl();
-                        renderPage(); // Just re-render, no need to fetch
+                        fetchData(); 
                         document.getElementById('poems').scrollIntoView({ behavior: 'smooth' });
                     };
                 }
                 return btn;
             };
 
-            // Prev
             elems.paginationContainer.appendChild(createBtn('<', currentPage - 1, false, currentPage === 1));
 
-            // Numbers (simplified logic)
             let start = Math.max(1, currentPage - 2);
             let end = Math.min(totalPages, currentPage + 2);
 
@@ -1414,11 +1396,9 @@
             if (end < totalPages - 1) elems.paginationContainer.appendChild(createBtn('...', null, false, true));
             if (end < totalPages) elems.paginationContainer.appendChild(createBtn(totalPages, totalPages, false, false));
 
-            // Next
             elems.paginationContainer.appendChild(createBtn('>', currentPage + 1, false, currentPage === totalPages));
         }
 
-        // Modal Logic
         function openModal(poem) {
             elems.modal.title.textContent = poem.title;
             elems.modal.poem.textContent = poem.text;
@@ -1452,7 +1432,6 @@
             fetchData();
         };
 
-        // Event Listeners
         elems.filters.toggle.onclick = () => elems.filters.panel.classList.toggle('active');
         
         const onFilterChange = (key, val) => {
@@ -1469,10 +1448,9 @@
             itemsPerPage = parseInt(e.target.value);
             currentPage = 1;
             updateUrl();
-            renderPage(); // No fetch needed for page size change if data exists
+            fetchData();
         };
 
-        // Search debounce
         let searchTimeout;
         elems.filters.search.oninput = (e) => {
             clearTimeout(searchTimeout);
@@ -1484,7 +1462,6 @@
             }, 600);
         };
 
-        // Mobile Menu
         elems.menu.btn.onclick = () => {
             elems.menu.btn.classList.toggle('active');
             elems.menu.el.classList.toggle('active');
@@ -1504,4 +1481,5 @@
     </script>
 </body>
 </html>
+
 
