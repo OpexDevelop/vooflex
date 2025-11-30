@@ -25,6 +25,7 @@ const port = process.env.PORT || 30010;
 app.use(cors());
 
 // --- GLOBAL SYNC TRACKER ---
+// Stores promises of currently running syncs to avoid duplicates and allow waiting
 const activeSyncs = new Map();
 
 // --- DATABASE CONFIGURATION ---
@@ -193,16 +194,13 @@ async function checkExistingIds(ids) {
 
 // --- SYNC LOGIC ---
 
-// startPage: 1 means "Start checking from the beginning". 
-// If called from Homepage handler, we might pass 2 because page 1 is already handled.
+// startPage: where to begin fetching.
 async function syncAuthorContent(identifier, delayMs = 500, startPage = 1) {
     console.log(`[SYNC] Starting sync for ${identifier} from page ${startPage}...`);
     try {
         let currentPage = startPage;
         let keepFetching = true;
-        
-        // Safety break
-        const MAX_PAGES_SYNC = 50; 
+        const MAX_PAGES_SYNC = 100; // Safety limit
 
         while (keepFetching && currentPage < MAX_PAGES_SYNC) {
             const pageRes = await getAuthorData(identifier, currentPage, delayMs);
@@ -213,16 +211,18 @@ async function syncAuthorContent(identifier, delayMs = 500, startPage = 1) {
             }
             
             const pIds = pageRes.data.poems.map(p => p.id);
+            // Check overlaps BEFORE saving
             const eIds = await checkExistingIds(pIds);
             
+            // Save current page
             await savePageToDB(identifier, pageRes.data);
             
-            // If ALL poems on this page already exist in DB, we assume we reached old data
+            // Stop if ALL poems on this page were already in DB
             if (eIds.length === pIds.length && pIds.length > 0) {
-                console.log(`[SYNC] All poems on page ${currentPage} exist. Sync finished.`);
+                console.log(`[SYNC] All poems on page ${currentPage} exist in DB. Sync finished.`);
                 keepFetching = false;
             } else {
-                console.log(`[SYNC] Page ${currentPage} had new content. Continuing...`);
+                console.log(`[SYNC] Page ${currentPage} processed. Moving to next...`);
                 currentPage++;
             }
         }
@@ -445,18 +445,20 @@ app.get('/author/:identifier', async (req, res) => {
     const hasFilters = req.query.q || req.query.year || (req.query.rubric && req.query.rubric !== 'all') || (req.query.collection && req.query.collection !== 'all');
 
     try {
-        // CASE A: FILTERS ARE ACTIVE
+        // CASE A: FILTERS ARE ACTIVE (SEARCH)
+        // STRICT LOGIC: If filters are ON, we MUST ensure fresh data.
         if (hasFilters) {
-            // 1. If sync is running, wait for it.
+            // Check if sync is already running
             if (activeSyncs.has(identifier)) {
                 console.log(`[WAIT] Request for ${identifier} waiting for sync...`);
                 await activeSyncs.get(identifier); 
-            }
-            // 2. If NO sync, START it and wait (ensures we search fresh data)
-            else {
-                 console.log(`[SYNC] Triggering sync before search for ${identifier}...`);
+            } else {
+                 // Force Sync from Page 1 even if author exists, to catch updates
+                 console.log(`[SYNC] Triggering forced sync before search for ${identifier}...`);
                  const syncPromise = syncAuthorContent(identifier, delayMs, 1);
                  activeSyncs.set(identifier, syncPromise);
+                 
+                 // Wait for it to finish, then cleanup
                  try {
                      await syncPromise;
                  } finally {
@@ -464,13 +466,13 @@ app.get('/author/:identifier', async (req, res) => {
                  }
             }
 
-            // 3. Search DB
+            // Now DB is guaranteed fresh. Search it.
             const finalResponse = await getFilteredPoemsFromDB(identifier, req.query);
             if (finalResponse) return res.json(finalResponse);
             return res.status(404).json({ status: 'error', error: { code: 404, message: 'Author not found' } });
         }
 
-        // CASE B: PAGINATION (Page > 1)
+        // CASE B: PAGINATION (Page > 1) - Just fetch/save/return
         if (pageNum > 1) {
             const freshData = await getAuthorData(identifier, pageNum, delayMs);
             if (freshData.status === 'success') {
@@ -486,16 +488,16 @@ app.get('/author/:identifier', async (req, res) => {
             const freshData = await getAuthorData(identifier, 1, delayMs);
             
             if (freshData.status === 'success') {
-                // 1. Check for new content BEFORE saving
-                // If we save first, the checkExistingIds will say "all exist"
+                // 1. Check for new content BEFORE saving to DB
+                // Because once saved, checkExistingIds will return true for all of them
                 const fetchedIds = (freshData.data.poems || []).map(p => p.id);
                 const existingIds = await checkExistingIds(fetchedIds);
                 const hasNewContent = existingIds.length !== fetchedIds.length;
 
-                // 2. Save Page 1
+                // 2. Save Page 1 to DB (so we can display it)
                 await savePageToDB(identifier, freshData.data);
                 
-                // 3. Return Page 1 to Client IMMEDIATELY
+                // 3. Return Page 1 to Client IMMEDIATELY (Fast UI)
                 res.json(freshData);
 
                 // 4. TRIGGER BACKGROUND SYNC IF NEW CONTENT FOUND
